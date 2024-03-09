@@ -1,8 +1,10 @@
 #pragma once
 #include "stdafx.h"
+#include "Timer.h"
 class CGameFramework
 {
 public:
+	CGameFramework();
 	~CGameFramework();
 	bool OnCreate(HINSTANCE hInstance, HWND hMainWnd);
 	//프레임워크를 초기화하는 함수이다(주 윈도우가 생성되면 호출된다).
@@ -30,6 +32,8 @@ public:
 	LRESULT CALLBACK OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	//윈도우의 메시지(키보드, 마우스 입력)를 처리하는 함수이다.
 private:
+	CGameTimer m_GameTimer;
+	_TCHAR m_pszFrameRate[50]{};
 	HINSTANCE m_hInstance{};
 	HWND m_hWnd{};
 	int m_nWndClientWidth{ FRAME_BUFFER_WIDTH };

@@ -42,6 +42,9 @@
     <ClInclude Include="LabProject01.h">
       <Filter>헤더 파일\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>헤더 파일\Framework</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameFramework.cpp">
@@ -52,6 +55,9 @@
     </ClCompile>
     <ClCompile Include="Stdafx.cpp">
       <Filter>소스 파일\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>소스 파일\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

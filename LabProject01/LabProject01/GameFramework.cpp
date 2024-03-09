@@ -1,5 +1,10 @@
 #include "GameFramework.h"
 
+CGameFramework::CGameFramework()
+{
+    _tcscpy_s(m_pszFrameRate, _T("LapProject ("));
+}
+
 CGameFramework::~CGameFramework()
 {
 }
@@ -210,6 +215,7 @@ void CGameFramework::CreateDepthStencilView()
     d3dResourceDesc.SampleDesc.Quality = (m_bMsaa4xEnable) ? (m_nMsaa4xQualityLevels - 1): 0;
     d3dResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     d3dResourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    
     D3D12_HEAP_PROPERTIES d3dHeapProperties;
     ::ZeroMemory(&d3dHeapProperties, sizeof(D3D12_HEAP_PROPERTIES));
     d3dHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -217,6 +223,7 @@ void CGameFramework::CreateDepthStencilView()
     d3dHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
     d3dHeapProperties.CreationNodeMask = 1;
     d3dHeapProperties.VisibleNodeMask = 1;
+    
     D3D12_CLEAR_VALUE d3dClearValue;
     d3dClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     d3dClearValue.DepthStencil.Depth = 1.0f;
@@ -320,6 +327,7 @@ void CGameFramework::WaitForGpuComplete()
 
 void CGameFramework::FrameAdvance()
 {
+    m_GameTimer.Tick(0.0f);
     ProcessInput();
     AnimateObjects();
     HRESULT hResult = m_pd3dCommandAllocator->Reset();
@@ -355,7 +363,8 @@ void CGameFramework::FrameAdvance()
     d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     d3dResourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     m_pd3dCommandList->ResourceBarrier(1, &d3dResourceBarrier);
-    /*현재 렌더 타겟에 대한 렌더링이 끝나기를 기다린다. GPU가 렌더 타겟(버퍼)을 더 이상 사용하지 않으면 렌더 타겟의 상태는 프리젠트 상태(D3D12_RESOURCE_STATE_PRESENT)로 바뀔 것이다.*/
+    /*현재 렌더 타겟에 대한 렌더링이 끝나기를 기다린다. GPU가 렌더 타겟(버퍼)을 더 이상 사용하지 않으면 
+    렌더 타겟의 상태는 프리젠트 상태(D3D12_RESOURCE_STATE_PRESENT)로 바뀔 것이다.*/
     hResult = m_pd3dCommandList->Close();
     //명령 리스트를 닫힌 상태로 만든다. 
     ID3D12CommandList *ppd3dCommandLists[] = { m_pd3dCommandList };
@@ -371,4 +380,6 @@ void CGameFramework::FrameAdvance()
     m_pdxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
     /*스왑체인을 프리젠트한다. 프리젠트를 하면 현재 렌더 타겟(후면버퍼)의 내용이 전면버퍼로 옮겨지고 렌더 타겟 인덱스가 바뀔 것이다.*/
     m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
+    m_GameTimer.GetFrameRate(m_pszFrameRate + 12, 37);
+    ::SetWindowText(m_hWnd, m_pszFrameRate);
 }
