@@ -101,19 +101,19 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-    DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION |
-                    WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
-    RECT rc = { 0,0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
-    AdjustWindowRect(&rc, dwStyle, FALSE);
     hInst = hInstance;
-    HWND hWnd = CreateWindow(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT,
-                CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, 
-                NULL, NULL, hInstance, NULL);
-    if (!hWnd) return FALSE;
-    gGameFramework.OnCreate(hInstance, hWnd);
-    ShowWindow(hWnd, nCmdShow);
-    UpdateWindow(hWnd);
-
+    RECT rc = { 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
+    DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_MINIMIZEBOX | WS_BORDER | WS_SYSMENU;
+    AdjustWindowRect(&rc, dwStyle, FALSE);
+    HWND hMainWnd = CreateWindow(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT,
+        CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance, NULL);
+    if (!hMainWnd) return(FALSE);
+    gGameFramework.OnCreate(hInstance, hMainWnd);
+    ::ShowWindow(hMainWnd, nCmdShow);
+    ::UpdateWindow(hMainWnd);
+#ifdef _WITH_SWAPCHAIN_FULLSCREEN_STATE
+    gGameFramework.ChangeSwapChainState();
+#endif
     return TRUE;
 }
 
