@@ -9,10 +9,6 @@ CGameFramework::CGameFramework()
 	//시간 추가
 	_tcscpy_s(m_pszFrameRate, _T("LapaProject("));
 }
-CGameFramework::~CGameFramework() 
-{
-
-}
 
 bool CGameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd) {
 	m_hInstance = hInstance;
@@ -53,13 +49,13 @@ void CGameFramework::OnDestroy() {
 
 	if (m_pd3dFence) m_pd3dFence->Release();
 
-	m_pdxgiswapChain->SetFullscreenState(FALSE, NULL);
+	m_pdxgiswapChain->SetFullscreenState(FALSE, nullptr);
 	if (m_pdxgiswapChain) m_pd3dDevice->Release();
 	if (m_pd3dDevice)m_pd3dDevice->Release();
 	if (m_pdxgiFactory) m_pdxgiFactory->Release();
 
 #if defined(_DEBUG)
-	IDXGIDebug1* pdxgiDebug = NULL;
+	IDXGIDebug1* pdxgiDebug = nullptr;
 	DXGIGetDebugInterface1(0, __uuidof(IDXGIDebug1), (void**)&pdxgiDebug);
 	HRESULT hResult = pdxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL,
 		DXGI_DEBUG_RLO_DETAIL);
@@ -107,7 +103,7 @@ void CGameFramework::CreateSwapChain() {
 	//m_nSwapChainBufferIndex = m_pdxgiswapChain->GetCurrentBackBufferIndex();
 
 
-	m_pdxgiFactory->CreateSwapChainForHwnd(m_pd3dCommandQueue, m_hWnd, &dxgiSwapChainDesc, &dxgiSwapChainFullScreenDesc, NULL, (IDXGISwapChain1**)&m_pdxgiswapChain);
+	m_pdxgiFactory->CreateSwapChainForHwnd(m_pd3dCommandQueue, m_hWnd, &dxgiSwapChainDesc, &dxgiSwapChainFullScreenDesc, nullptr, (IDXGISwapChain1**)&m_pdxgiswapChain);
 	//스왑체인을 생성한다.
 
 	m_nSwapChainBufferIndex = m_pdxgiswapChain->GetCurrentBackBufferIndex();
@@ -129,7 +125,7 @@ void CGameFramework::CreateDirect3DDevice() {
 
 	UINT nDXGIFactoryFlags = 0;
 #if defined(_DEBUG)
-	ID3D12Debug* pd3dDebugController = NULL;
+	ID3D12Debug* pd3dDebugController = nullptr;
 	hResult = D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void**)&pd3dDebugController);
 	if (pd3dDebugController) {
 
@@ -143,7 +139,7 @@ void CGameFramework::CreateDirect3DDevice() {
 
 
 	hResult = ::CreateDXGIFactory2(nDXGIFactoryFlags, __uuidof(IDXGIFactory4), (void**)&m_pdxgiFactory);
-	IDXGIAdapter1* pd3dAdapter = NULL;
+	IDXGIAdapter1* pd3dAdapter = nullptr;
 	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != m_pdxgiFactory->EnumAdapters1(i, &pd3dAdapter); i++) {
 
 		DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
@@ -173,7 +169,7 @@ void CGameFramework::CreateDirect3DDevice() {
 	hResult = m_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&m_pd3dFence);
 	for (UINT i = 0; i < m_nSwapChainBufferIndex; ++i) m_nFenceValues[i] = 0;
 	//펜스를 생성하고 펜스 값을 0으로 설정한다.
-	m_hFenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	m_hFenceEvent = ::CreateEvent(nullptr, FALSE, FALSE, nullptr);
 	//펜스와 동기화를 위한 이벤트 객체를 생성한다(이벤트 객체의 초기값을 false이다.) 이벤트가 실행되면(Signal) 이벤트의 값을 자동적으로 FALSE가 되도록 생성한다.
 
 	m_d3dviewport.TopLeftX = 0;
@@ -203,7 +199,7 @@ void CGameFramework::CreateCommandQueueAndList() {
 	hResult = m_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)(&m_pd3dCommandAllocator));
 	//직접 명령 할당자를 생성한다.
 
-	hResult = m_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pd3dCommandAllocator, NULL, __uuidof(ID3D12GraphicsCommandList), (void**)&m_pd3dCommandList);
+	hResult = m_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pd3dCommandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&m_pd3dCommandList);
 	//직접 명령 리스트를 생성한다.
 
 	hResult = m_pd3dCommandList->Close();
@@ -238,7 +234,7 @@ void CGameFramework::CreateRenderTargetViews() {
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	for (UINT i = 0; i < m_nSwapChainBuffers; ++i) {
 		m_pdxgiswapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&m_ppd3dRenderTargetBuffers[i]);
-		m_pd3dDevice->CreateRenderTargetView(m_ppd3dRenderTargetBuffers[i], NULL, d3dRtvCPUDescriptorHandle);
+		m_pd3dDevice->CreateRenderTargetView(m_ppd3dRenderTargetBuffers[i], nullptr, d3dRtvCPUDescriptorHandle);
 		d3dRtvCPUDescriptorHandle.ptr += m_nRtvDescriptorIncrementSize;
 	}
 
@@ -276,18 +272,25 @@ void CGameFramework::CreateDepthStencilView() {
 	//깊이-스텐실 버퍼를 생성한다.
 
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUdescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	m_pd3dDevice->CreateDepthStencilView(m_pd3dDepthStencilBuffer, NULL, d3dDsvCPUdescriptorHandle);
+	m_pd3dDevice->CreateDepthStencilView(m_pd3dDepthStencilBuffer, nullptr, d3dDsvCPUdescriptorHandle);
 }
 
 
-void CGameFramework::BuildObjects() {
-
-	//6장에서 추가된 내용
+void CGameFramework::BuildObjects()
+{
+	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	//씬 객체를 생성하고 씬에 포함될 게임 객체들을 생성한다. 
 	m_pScene = new CScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice);
-
+	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	//씬 객체를 생성하기 위하여 필요한 그래픽 명령 리스트들을 명령 큐에 추가한다. 
+	m_pd3dCommandList->Close();
+	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
+	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+	//그래픽 명령 리스트들이 모두 실행될 때까지 기다린다. 
+	WaitForGpuComplete();
+	//그래픽 리소스들을 생성하는 과정에 생성된 업로드 버퍼들을 소멸시킨다. 
+	if (m_pScene) m_pScene->ReleaseUploadBuffers();
 	m_GameTimer.Reset();
-
 }
 
 void CGameFramework::ReleaseObjects() {
@@ -396,7 +399,7 @@ void CGameFramework::FrameAdvance() {
 	AnimateObjects();
 
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
-	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, nullptr);
 	//명령 할당자와 명령 리스트를 리셋한다.
 
 
@@ -432,9 +435,9 @@ void CGameFramework::FrameAdvance() {
 	//랜더 타겟 뷰(서술자)와 깊이 스텐실 뷰(서술자)를 출력 병학 단계(om)에 연결한다.
 
 	float pfClearColor[4] = { 0.0f, 0.125f , 0.3f , 1.0f };
-	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor, 0, NULL);
+	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor, 0, nullptr);
 
-	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	//원하는 값으로 깊이- 스텐실(뷰)을 지운다.
 
 
@@ -464,9 +467,9 @@ void CGameFramework::FrameAdvance() {
 
 	DXGI_PRESENT_PARAMETERS dxgipresentParameters;
 	dxgipresentParameters.DirtyRectsCount = 0;
-	dxgipresentParameters.pDirtyRects = NULL;
-	dxgipresentParameters.pScrollRect = NULL;
-	dxgipresentParameters.pScrollOffset = NULL;
+	dxgipresentParameters.pDirtyRects = nullptr;
+	dxgipresentParameters.pScrollRect = nullptr;
+	dxgipresentParameters.pScrollOffset = nullptr;
 	m_pdxgiswapChain->Present(0, 0);
 	MoveToNextFrame();
 
@@ -484,8 +487,8 @@ void CGameFramework::ChangeSwapChainState() {
 
 	BOOL bFullSscreenState = FALSE;
 
-	m_pdxgiswapChain->GetFullscreenState(&bFullSscreenState, NULL);
-	m_pdxgiswapChain->SetFullscreenState(!bFullSscreenState, NULL);
+	m_pdxgiswapChain->GetFullscreenState(&bFullSscreenState, nullptr);
+	m_pdxgiswapChain->SetFullscreenState(!bFullSscreenState, nullptr);
 
 	DXGI_MODE_DESC dxgiTargetParameters;
 	dxgiTargetParameters.Format = DXGI_FORMAT_R8G8B8A8_UNORM;

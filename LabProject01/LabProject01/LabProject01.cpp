@@ -45,7 +45,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // 기본 메시지 루프입니다:
     while (1) {
-        if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        if (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) break;
             if (!::TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
                 ::TranslateMessage(&msg);
@@ -82,7 +82,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABPROJECT01));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = NULL;
+    wcex.lpszMenuName   = nullptr;
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -106,7 +106,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_MINIMIZEBOX | WS_BORDER | WS_SYSMENU;
     AdjustWindowRect(&rc, dwStyle, FALSE);
     HWND hMainWnd = CreateWindow(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT,
-        CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance, NULL);
+        CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
     if (!hMainWnd) return(FALSE);
     gGameFramework.OnCreate(hInstance, hMainWnd);
     ::ShowWindow(hMainWnd, nCmdShow);
