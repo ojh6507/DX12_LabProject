@@ -172,17 +172,6 @@ void CGameFramework::CreateDirect3DDevice() {
 	m_hFenceEvent = ::CreateEvent(nullptr, FALSE, FALSE, nullptr);
 	//펜스와 동기화를 위한 이벤트 객체를 생성한다(이벤트 객체의 초기값을 false이다.) 이벤트가 실행되면(Signal) 이벤트의 값을 자동적으로 FALSE가 되도록 생성한다.
 
-	m_d3dviewport.TopLeftX = 0;
-	m_d3dviewport.TopLeftY = 0;
-	m_d3dviewport.Width = static_cast<float>(m_nWndClientWidth);
-	m_d3dviewport.Height = static_cast<float>(m_nWndClientHeight);
-	m_d3dviewport.MinDepth = 0.0f;
-	m_d3dviewport.MaxDepth = 1.0f;
-	//뷰포트를 주 윈도우의 클라이언트 영역 전체로 설정한다.
-
-	m_d3dScissortRect = { 0,0,m_nWndClientWidth , m_nWndClientHeight };
-	//씨저 사각형을 주 윈도우의 클라이언트 영역 전체로 설정한다.
-
 	if (pd3dAdapter) pd3dAdapter->Release();
 }
 
@@ -279,6 +268,12 @@ void CGameFramework::CreateDepthStencilView() {
 void CGameFramework::BuildObjects()
 {
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	//카메라 객체를 생성하여 뷰포트, 씨저 사각형, 투영 변환 행렬, 카메라 변환 행렬을 생성하고 설정한다. 
+	m_pCamera = new CCamera();
+	m_pCamera->SetViewport(0, 0, m_nWndClientWidth, m_nWndClientHeight, 0.0f, 1.0f);
+	m_pCamera->SetScissorRect(0, 0, m_nWndClientWidth, m_nWndClientHeight);
+	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(m_nWndClientWidth) / float(m_nWndClientHeight), 90.0f);
+	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
 	//씬 객체를 생성하고 씬에 포함될 게임 객체들을 생성한다. 
 	m_pScene = new CScene();
 	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
@@ -372,11 +367,8 @@ void CGameFramework::AnimateObjects() {
 
 }
 
-void CGameFramework::WaitForGpuComplete() {
-
-
-	//cpu 펜스의 값을 증가한다.
-
+void CGameFramework::WaitForGpuComplete() 
+{
 	UINT64 nFenceValue = ++m_nFenceValues[m_nSwapChainBufferIndex];
 	HRESULT hResult = m_pd3dCommandQueue->Signal(m_pd3dFence, nFenceValue);
 	//gpu가 펜스이 값을 설정하는 명령을 명령큐에 추가한다.
@@ -401,12 +393,6 @@ void CGameFramework::FrameAdvance() {
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
 	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, nullptr);
 	//명령 할당자와 명령 리스트를 리셋한다.
-
-
-
-	m_pd3dCommandList->RSSetViewports(1, &m_d3dviewport);
-	m_pd3dCommandList->RSSetScissorRects(1, &m_d3dScissortRect);
-	//뷰포트와 씨저 사각형을 설정한다.
 
 
 	D3D12_RESOURCE_BARRIER d3dResourceBarrier;
@@ -443,7 +429,7 @@ void CGameFramework::FrameAdvance() {
 
 	//렌더링 코드는 여기에 추가 될 예정.
 	//6장에서 추가..
-	if (m_pScene) m_pScene->Render(m_pd3dCommandList);
+	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
 	///
 
 

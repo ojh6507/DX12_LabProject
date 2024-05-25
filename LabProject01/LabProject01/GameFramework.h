@@ -1,6 +1,7 @@
 #pragma once
 #include "Timer.h"
 #include "Scene.h"
+#include "Camera.h"
 
 
 class CGameFramework {
@@ -51,9 +52,6 @@ private:
 	HANDLE m_hFenceEvent{};
 	//펜스 인터페이스 포인터 ,펜스의 값, 이벤트 핸들이다.
 
-	D3D12_VIEWPORT m_d3dviewport{};
-	D3D12_RECT m_d3dScissortRect{};
-	//뷰포트와 시저 사각형이다.
 
 	//다음은 게임 프레임 워크에서 사용할 타이머이다.
 	CGameTimer m_GameTimer;
@@ -63,6 +61,8 @@ private:
 	UINT64 m_nFenceValues[m_nSwapChainBuffers]{};
 	//씬을 그리기 위한 멤버변수
 	CScene* m_pScene;
+public:
+	CCamera* m_pCamera = NULL;
 
 public:
 	CGameFramework();
