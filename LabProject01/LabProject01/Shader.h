@@ -32,11 +32,11 @@ public:
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 protected:
-	ID3D12PipelineState** m_ppd3dPipelineStates = NULL;
+	ID3D12PipelineState** m_ppd3dPipelineStates = nullptr;
 	int m_nPipelineStates = 0;
 };
 
-class CDiffusedShader : public CShader
+class CPlayerShader : public CShader
 {
 public:
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
@@ -59,6 +59,6 @@ public:
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 protected:
-	CGameObject** m_ppObjects = NULL;
+	CGameObject** m_ppObjects = nullptr;
 	int m_nObjects = 0;
 };

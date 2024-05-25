@@ -2,7 +2,7 @@
 #include "Timer.h"
 #include "Scene.h"
 #include "Camera.h"
-
+#include "Player.h"
 
 class CGameFramework {
 private:
@@ -62,8 +62,9 @@ private:
 	//씬을 그리기 위한 멤버변수
 	CScene* m_pScene;
 public:
-	CCamera* m_pCamera = NULL;
-
+	CCamera* m_pCamera = nullptr;
+	CPlayer* m_pPlayer = nullptr;
+	POINT m_ptOldCursorPos;
 public:
 	CGameFramework();
 	

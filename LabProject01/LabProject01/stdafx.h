@@ -85,27 +85,27 @@ namespace Vector3
             XMLoadFloat3(&xmf3Vector2));
         return(xmf3Result);
     }
-    inline XMFLOAT3 Add(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2, float fScalar)
+    inline XMFLOAT3 Add(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2, float fScalar)
     {
         XMFLOAT3 xmf3Result;
         XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector1) + (XMLoadFloat3(&xmf3Vector2) * fScalar));
         return(xmf3Result);
     }
-    inline XMFLOAT3 Subtract(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
+    inline XMFLOAT3 Subtract(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
     {
         XMFLOAT3 xmf3Result;
         XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector1) -
             XMLoadFloat3(&xmf3Vector2));
         return(xmf3Result);
     }
-    inline float DotProduct(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
+    inline float DotProduct(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
     {
         XMFLOAT3 xmf3Result;
         XMStoreFloat3(&xmf3Result, XMVector3Dot(XMLoadFloat3(&xmf3Vector1),
             XMLoadFloat3(&xmf3Vector2)));
         return(xmf3Result.x);
     }
-    inline XMFLOAT3 CrossProduct(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2, bool
+    inline XMFLOAT3 CrossProduct(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2, bool
         bNormalize = true)
     {
         XMFLOAT3 xmf3Result;
@@ -135,7 +135,7 @@ namespace Vector3
         XMVECTOR xmvAngle = XMVector3AngleBetweenNormals(xmvVector1, xmvVector2);
         return(XMConvertToDegrees(acosf(XMVectorGetX(xmvAngle))));
     }
-    inline float Angle(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
+    inline float Angle(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
     {
         return(Angle(XMLoadFloat3(&xmf3Vector1), XMLoadFloat3(&xmf3Vector2)));
     }
@@ -213,7 +213,7 @@ namespace Matrix4x4
     inline XMFLOAT4X4 Inverse(const XMFLOAT4X4& xmmtx4x4Matrix)
     {
         XMFLOAT4X4 xmmtx4x4Result;
-        XMStoreFloat4x4(&xmmtx4x4Result, XMMatrixInverse(NULL,
+        XMStoreFloat4x4(&xmmtx4x4Result, XMMatrixInverse(nullptr,
             XMLoadFloat4x4(&xmmtx4x4Matrix)));
         return(xmmtx4x4Result);
     }
