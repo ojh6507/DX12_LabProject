@@ -10,8 +10,9 @@ public:
 	virtual ~CGameObject();
 private:
 	int m_nReferences = 0;
-protected:
+public:
 	XMFLOAT4X4 m_xmf4x4World;
+protected:
 	CMesh* m_pMesh{};
 	CShader* m_pShader{};
 public:
@@ -47,7 +48,8 @@ public:
 	virtual void Animate(float fTimeElapsed);
 	virtual void OnPrepareRender();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
-
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera, 
+						UINT nInstances, D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
 };
 
 class CRotatingObject : public CGameObject
