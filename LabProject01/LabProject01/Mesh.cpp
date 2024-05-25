@@ -8,15 +8,58 @@ CMesh::~CMesh()
 	if (m_pd3dVertexUploadBuffer) m_pd3dVertexUploadBuffer->Release();
 	if (m_pd3dIndexBuffer) m_pd3dIndexBuffer->Release();
 	if (m_pd3dIndexUploadBuffer) m_pd3dIndexUploadBuffer->Release();
+	if (m_pVertices) delete[] m_pVertices;
+	if (m_pnIndices) delete[] m_pnIndices;
 }
 void CMesh::ReleaseUploadBuffers()
 {
-	//Á¤Á¡ ¹öÆÛ¸¦ À§ÇÑ ¾÷·Îµå ¹öÆÛ¸¦ ¼Ò¸ê½ÃÅ²´Ù. 
+	//ì •ì  ë²„í¼ë¥¼ ìœ„í•œ ì—…ë¡œë“œ ë²„í¼ë¥¼ ì†Œë©¸ì‹œí‚¨ë‹¤. 
 	if (m_pd3dVertexUploadBuffer) m_pd3dVertexUploadBuffer->Release();
 	m_pd3dVertexUploadBuffer = nullptr;
 	if (m_pd3dIndexUploadBuffer) m_pd3dIndexUploadBuffer->Release();
 	m_pd3dIndexUploadBuffer = nullptr;
 };
+
+int CMesh::CheckRayIntersection(XMFLOAT3& xmf3RayOrigin, XMFLOAT3& xmf3RayDirection, float* pfNearHitDistance)
+{
+	//í•˜ë‚˜ì˜ ë©”ì‰¬ì—ì„œ ê´‘ì„ ì€ ì—¬ëŸ¬ ê°œì˜ ì‚¼ê°í˜•ê³¼ êµì°¨í•  ìˆ˜ ìˆë‹¤. êµì°¨í•˜ëŠ” ì‚¼ê°í˜•ë“¤ ì¤‘ ê°€ì¥ ê°€ê¹Œìš´ ì‚¼ê°í˜•ì„ ì°¾ëŠ”ë‹¤. 
+	int nIntersections = 0;
+	BYTE* pbPositions = (BYTE*)m_pVertices;
+	int nOffset = (m_d3dPrimitiveTopology == D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) ? 3 : 1;
+	/*ë©”ì‰¬ì˜ í”„ë¦¬ë¯¸í‹°ë¸Œ(ì‚¼ê°í˜•)ë“¤ì˜ ê°œìˆ˜ì´ë‹¤. ì‚¼ê°í˜• ë¦¬ìŠ¤íŠ¸ì¸ ê²½ìš° (ì •ì ì˜ ê°œìˆ˜ / 3) ë˜ëŠ” (ì¸ë±ìŠ¤ì˜ ê°œìˆ˜ / 3),
+	ì‚¼ê°í˜• ìŠ¤íŠ¸ë¦½ì˜ ê²½ìš° (ì •ì ì˜ ê°œìˆ˜ - 2) ë˜ëŠ” (ì¸ë±ìŠ¤ì˜ ê°œìˆ˜ â€“ 2)ì´ë‹¤.*/
+	int nPrimitives = (m_d3dPrimitiveTopology == D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) ? (m_nVertices / 3) : (m_nVertices - 2);
+	if (m_nIndices > 0) nPrimitives = (m_d3dPrimitiveTopology == D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) ? (m_nIndices / 3) : (m_nIndices - 2);
+	//ê´‘ì„ ì€ ëª¨ë¸ ì¢Œí‘œê³„ë¡œ í‘œí˜„ëœë‹¤. 
+	XMVECTOR xmRayOrigin = XMLoadFloat3(&xmf3RayOrigin);
+	XMVECTOR xmRayDirection = XMLoadFloat3(&xmf3RayDirection);
+	//ëª¨ë¸ ì¢Œí‘œê³„ì˜ ê´‘ì„ ê³¼ ë©”ì‰¬ì˜ ë°”ìš´ë”© ë°•ìŠ¤(ëª¨ë¸ ì¢Œí‘œê³„)ì™€ì˜ êµì°¨ë¥¼ ê²€ì‚¬í•œë‹¤. 
+	bool bIntersected = m_xmBoundingBox.Intersects(xmRayOrigin, xmRayDirection, *pfNearHitDistance);
+	//ëª¨ë¸ ì¢Œí‘œê³„ì˜ ê´‘ì„ ì´ ë©”ì‰¬ì˜ ë°”ìš´ë”© ë°•ìŠ¤ì™€ êµì°¨í•˜ë©´ ë©”ì‰¬ì™€ì˜ êµì°¨ë¥¼ ê²€ì‚¬í•œë‹¤. 
+	if (bIntersected) {
+		float fNearHitDistance = FLT_MAX;
+		/*ë©”ì‰¬ì˜ ëª¨ë“  í”„ë¦¬ë¯¸í‹°ë¸Œ(ì‚¼ê°í˜•)ë“¤ì— ëŒ€í•˜ì—¬ í”½í‚¹ ê´‘ì„ ê³¼ì˜ ì¶©ëŒì„ ê²€ì‚¬í•œë‹¤. ì¶©ëŒí•˜ëŠ” ëª¨ë“  ì‚¼ê°í˜•ì„ ì°¾ì•„ ê´‘ì„ ì˜
+		ì‹œì‘ì (ì‹¤ì œë¡œëŠ” ì¹´ë©”ë¼ ì¢Œí‘œê³„ì˜ ì›ì )ì— ê°€ì¥ ê°€ê¹Œìš´ ì‚¼ê°í˜•ì„ ì°¾ëŠ”ë‹¤.*/
+		for (int i = 0; i < nPrimitives; i++) {
+			XMVECTOR v0 = XMLoadFloat3((XMFLOAT3*)(pbPositions + ((m_pnIndices) ?
+				(m_pnIndices[(i * nOffset) + 0]) : ((i * nOffset) + 0)) * m_nStride));
+			XMVECTOR v1 = XMLoadFloat3((XMFLOAT3*)(pbPositions + ((m_pnIndices) ?
+				(m_pnIndices[(i * nOffset) + 1]) : ((i * nOffset) + 1)) * m_nStride));
+			XMVECTOR v2 = XMLoadFloat3((XMFLOAT3*)(pbPositions + ((m_pnIndices) ?
+				(m_pnIndices[(i * nOffset) + 2]) : ((i * nOffset) + 2)) * m_nStride));
+			float fHitDistance;
+			BOOL bIntersected = TriangleTests::Intersects(xmRayOrigin, xmRayDirection, v0, v1, v2, fHitDistance);
+			if (bIntersected) {
+				if (fHitDistance < fNearHitDistance) {
+					*pfNearHitDistance = fNearHitDistance = fHitDistance;
+				}
+				nIntersections++;
+			}
+		}
+	}
+	return(nIntersections);
+}
+
 void CMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
@@ -24,7 +67,7 @@ void CMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 	if (m_pd3dIndexBuffer) {
 		pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
 		pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
-		//ÀÎµ¦½º ¹öÆÛ°¡ ÀÖÀ¸¸é ÀÎµ¦½º ¹öÆÛ¸¦ ÆÄÀÌÇÁ¶óÀÎ(IA: ÀÔ·Â Á¶¸³±â)¿¡ ¿¬°áÇÏ°í ÀÎµ¦½º¸¦ »ç¿ëÇÏ¿© ·»´õ¸µÇÑ´Ù. 
+		//ì¸ë±ìŠ¤ ë²„í¼ê°€ ìˆìœ¼ë©´ ì¸ë±ìŠ¤ ë²„í¼ë¥¼ íŒŒì´í”„ë¼ì¸(IA: ì…ë ¥ ì¡°ë¦½ê¸°)ì— ì—°ê²°í•˜ê³  ì¸ë±ìŠ¤ë¥¼ ì‚¬ìš©í•˜ì—¬ ë Œë”ë§í•œë‹¤. 
 	}
 	else {
 		pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
@@ -32,21 +75,21 @@ void CMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 }
 CTriangleMesh::CTriangleMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) : CMesh(pd3dDevice, pd3dCommandList)
 {
-	//»ï°¢Çü ¸Ş½¬¸¦ Á¤ÀÇÇÑ´Ù. 
+	//ì‚¼ê°í˜• ë©”ì‰¬ë¥¼ ì •ì˜í•œë‹¤. 
 	m_nVertices = 3;
 	m_nStride = sizeof(CDiffusedVertex);
 	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	/*Á¤Á¡(»ï°¢ÇüÀÇ ²ÀÁöÁ¡)ÀÇ »ö»óÀº ½Ã°è¹æÇâ ¼ø¼­´ë·Î »¡°£»ö, ³ì»ö, ÆÄ¶õ»öÀ¸·Î ÁöÁ¤ÇÑ´Ù. RGBA(Red, Green, Blue,
-	Alpha) 4°³ÀÇ ÆÄ¶ó¸ŞÅÍ¸¦ »ç¿ëÇÏ¿© »ö»óÀ» Ç¥ÇöÇÑ´Ù. °¢ ÆÄ¶ó¸ŞÅÍ´Â 0.0~1.0 »çÀÌÀÇ ½Ç¼ö°ªÀ» °¡Áø´Ù.*/
-	CDiffusedVertex pVertices[3];
-	pVertices[0] = CDiffusedVertex(XMFLOAT3(0.0f, 0.5f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f));
-	pVertices[1] = CDiffusedVertex(XMFLOAT3(0.5f, -0.5f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f));
-	pVertices[2] = CDiffusedVertex(XMFLOAT3(-0.5f, -0.5f, 0.0f), XMFLOAT4(Colors::Blue));
-	//»ï°¢Çü ¸Ş½¬¸¦ ¸®¼Ò½º(Á¤Á¡ ¹öÆÛ)·Î »ı¼ºÇÑ´Ù. 
-	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices,
+	/*ì •ì (ì‚¼ê°í˜•ì˜ ê¼­ì§€ì )ì˜ ìƒ‰ìƒì€ ì‹œê³„ë°©í–¥ ìˆœì„œëŒ€ë¡œ ë¹¨ê°„ìƒ‰, ë…¹ìƒ‰, íŒŒë€ìƒ‰ìœ¼ë¡œ ì§€ì •í•œë‹¤. RGBA(Red, Green, Blue,
+	Alpha) 4ê°œì˜ íŒŒë¼ë©”í„°ë¥¼ ì‚¬ìš©í•˜ì—¬ ìƒ‰ìƒì„ í‘œí˜„í•œë‹¤. ê° íŒŒë¼ë©”í„°ëŠ” 0.0~1.0 ì‚¬ì´ì˜ ì‹¤ìˆ˜ê°’ì„ ê°€ì§„ë‹¤.*/
+	CDiffusedVertex m_pVertices[3];
+	m_pVertices[0] = CDiffusedVertex(XMFLOAT3(0.0f, 0.5f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f));
+	m_pVertices[1] = CDiffusedVertex(XMFLOAT3(0.5f, -0.5f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f));
+	m_pVertices[2] = CDiffusedVertex(XMFLOAT3(-0.5f, -0.5f, 0.0f), XMFLOAT4(Colors::Blue));
+	//ì‚¼ê°í˜• ë©”ì‰¬ë¥¼ ë¦¬ì†ŒìŠ¤(ì •ì  ë²„í¼)ë¡œ ìƒì„±í•œë‹¤. 
+	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pVertices,
 						m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, 
 						&m_pd3dVertexUploadBuffer);
-	//Á¤Á¡ ¹öÆÛ ºä¸¦ »ı¼ºÇÑ´Ù. 
+	//ì •ì  ë²„í¼ ë·°ë¥¼ ìƒì„±í•œë‹¤. 
 	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
 	m_d3dVertexBufferView.StrideInBytes = m_nStride;
 	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
@@ -56,65 +99,68 @@ CCubeMeshDiffused::CCubeMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	float fWidth, float fHeight, float fDepth)
 	: CMesh(pd3dDevice, pd3dCommandList)
 {
-	//Á÷À°¸éÃ¼´Â ²ÀÁöÁ¡(Á¤Á¡)ÀÌ 8°³ÀÌ´Ù. 
+	//ì§ìœ¡ë©´ì²´ëŠ” ê¼­ì§€ì (ì •ì )ì´ 8ê°œì´ë‹¤. 
 	m_nVertices = 8;
 	m_nStride = sizeof(CDiffusedVertex);
 	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	float fx = fWidth * 0.5f, fy = fHeight * 0.5f, fz = fDepth * 0.5f;
-	//Á¤Á¡ ¹öÆÛ´Â Á÷À°¸éÃ¼ÀÇ ²ÀÁöÁ¡ 8°³¿¡ ´ëÇÑ Á¤Á¡ µ¥ÀÌÅÍ¸¦ °¡Áø´Ù. 
-	CDiffusedVertex pVertices[8];
-	pVertices[0] = CDiffusedVertex(XMFLOAT3(-fx, +fy, -fz), RANDOM_COLOR);
-	pVertices[1] = CDiffusedVertex(XMFLOAT3(+fx, +fy, -fz), RANDOM_COLOR);
-	pVertices[2] = CDiffusedVertex(XMFLOAT3(+fx, +fy, +fz), RANDOM_COLOR);
-	pVertices[3] = CDiffusedVertex(XMFLOAT3(-fx, +fy, +fz), RANDOM_COLOR);
-	pVertices[4] = CDiffusedVertex(XMFLOAT3(-fx, -fy, -fz), RANDOM_COLOR);
-	pVertices[5] = CDiffusedVertex(XMFLOAT3(+fx, -fy, -fz), RANDOM_COLOR);
-	pVertices[6] = CDiffusedVertex(XMFLOAT3(+fx, -fy, +fz), RANDOM_COLOR);
-	pVertices[7] = CDiffusedVertex(XMFLOAT3(-fx, -fy, +fz), RANDOM_COLOR);
-	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices,
+	//ì •ì  ë²„í¼ëŠ” ì§ìœ¡ë©´ì²´ì˜ ê¼­ì§€ì  8ê°œì— ëŒ€í•œ ì •ì  ë°ì´í„°ë¥¼ ê°€ì§„ë‹¤. 
+	m_pVertices = new CDiffusedVertex[m_nVertices];
+	m_pVertices[0] = CDiffusedVertex(XMFLOAT3(-fx, +fy, -fz), RANDOM_COLOR);
+	m_pVertices[1] = CDiffusedVertex(XMFLOAT3(+fx, +fy, -fz), RANDOM_COLOR);
+	m_pVertices[2] = CDiffusedVertex(XMFLOAT3(+fx, +fy, +fz), RANDOM_COLOR);
+	m_pVertices[3] = CDiffusedVertex(XMFLOAT3(-fx, +fy, +fz), RANDOM_COLOR);
+	m_pVertices[4] = CDiffusedVertex(XMFLOAT3(-fx, -fy, -fz), RANDOM_COLOR);
+	m_pVertices[5] = CDiffusedVertex(XMFLOAT3(+fx, -fy, -fz), RANDOM_COLOR);
+	m_pVertices[6] = CDiffusedVertex(XMFLOAT3(+fx, -fy, +fz), RANDOM_COLOR);
+	m_pVertices[7] = CDiffusedVertex(XMFLOAT3(-fx, -fy, +fz), RANDOM_COLOR);
+	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pVertices,
 		m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT,
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 		&m_pd3dVertexUploadBuffer);
 	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
 	m_d3dVertexBufferView.StrideInBytes = m_nStride;
 	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
-	/*ÀÎµ¦½º ¹öÆÛ´Â Á÷À°¸éÃ¼ÀÇ 6°³ÀÇ ¸é(»ç°¢Çü)¿¡ ´ëÇÑ ±âÇÏ Á¤º¸¸¦ °®´Â´Ù. »ï°¢Çü ¸®½ºÆ®·Î Á÷À°¸éÃ¼¸¦ Ç¥ÇöÇÒ °ÍÀÌ¹Ç·Î °¢ ¸éÀº
-	2°³ÀÇ »ï°¢ÇüÀ» °¡Áö°í °¢ »ï°¢ÇüÀº 3°³ÀÇ Á¤Á¡ÀÌ ÇÊ¿äÇÏ´Ù. Áï, ÀÎµ¦½º ¹öÆÛ´Â ÀüÃ¼ 36(=6*2*3)°³ÀÇ ÀÎµ¦½º¸¦ °¡Á®¾ß ÇÑ´Ù.*/
+	/*ì¸ë±ìŠ¤ ë²„í¼ëŠ” ì§ìœ¡ë©´ì²´ì˜ 6ê°œì˜ ë©´(ì‚¬ê°í˜•)ì— ëŒ€í•œ ê¸°í•˜ ì •ë³´ë¥¼ ê°–ëŠ”ë‹¤. ì‚¼ê°í˜• ë¦¬ìŠ¤íŠ¸ë¡œ ì§ìœ¡ë©´ì²´ë¥¼ í‘œí˜„í•  ê²ƒì´ë¯€ë¡œ ê° ë©´ì€
+	2ê°œì˜ ì‚¼ê°í˜•ì„ ê°€ì§€ê³  ê° ì‚¼ê°í˜•ì€ 3ê°œì˜ ì •ì ì´ í•„ìš”í•˜ë‹¤. ì¦‰, ì¸ë±ìŠ¤ ë²„í¼ëŠ” ì „ì²´ 36(=6*2*3)ê°œì˜ ì¸ë±ìŠ¤ë¥¼ ê°€ì ¸ì•¼ í•œë‹¤.*/
 	m_nIndices = 36;
-	UINT pnIndices[36];
-	//¨Í ¾Õ¸é(Front) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[0] = 3; pnIndices[1] = 1; pnIndices[2] = 0;
-	//¨Î ¾Õ¸é(Front) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[3] = 2; pnIndices[4] = 1; pnIndices[5] = 3;
-	//¨Ï À­¸é(Top) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[6] = 0; pnIndices[7] = 5; pnIndices[8] = 4;
-	//¨Ğ À­¸é(Top) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[9] = 1; pnIndices[10] = 5; pnIndices[11] = 0;
-	//¨Ñ µŞ¸é(Back) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[12] = 3; pnIndices[13] = 4; pnIndices[14] = 7;
-	//¨Ò µŞ¸é(Back) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[15] = 0; pnIndices[16] = 4; pnIndices[17] = 3;
-	//¨Ó ¾Æ·¡¸é(Bottom) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[18] = 1; pnIndices[19] = 6; pnIndices[20] = 5;
-	//¨Ô ¾Æ·¡¸é(Bottom) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[21] = 2; pnIndices[22] = 6; pnIndices[23] = 1;
-	//¨Õ ¿·¸é(Left) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[24] = 2; pnIndices[25] = 7; pnIndices[26] = 6;
-	//¨Ö ¿·¸é(Left) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[27] = 3; pnIndices[28] = 7; pnIndices[29] = 2;
-	//¨× ¿·¸é(Right) »ç°¢ÇüÀÇ À§ÂÊ »ï°¢Çü
-	pnIndices[30] = 6; pnIndices[31] = 4; pnIndices[32] = 5;
-	//¨Ø ¿·¸é(Right) »ç°¢ÇüÀÇ ¾Æ·¡ÂÊ »ï°¢Çü
-	pnIndices[33] = 7; pnIndices[34] = 4; pnIndices[35] = 6;
-	//ÀÎµ¦½º ¹öÆÛ¸¦ »ı¼ºÇÑ´Ù. 
-	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pnIndices,
+	m_pnIndices = new UINT[m_nIndices];
+	//â“ ì•ë©´(Front) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[0] = 3; m_pnIndices[1] = 1; m_pnIndices[2] = 0;
+	//â“‘ ì•ë©´(Front) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[3] = 2; m_pnIndices[4] = 1; m_pnIndices[5] = 3;
+	//â“’ ìœ—ë©´(Top) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[6] = 0; m_pnIndices[7] = 5; m_pnIndices[8] = 4;
+	//â““ ìœ—ë©´(Top) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[9] = 1; m_pnIndices[10] = 5; m_pnIndices[11] = 0;
+	//â“” ë’·ë©´(Back) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[12] = 3; m_pnIndices[13] = 4; m_pnIndices[14] = 7;
+	//â“• ë’·ë©´(Back) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[15] = 0; m_pnIndices[16] = 4; m_pnIndices[17] = 3;
+	//â“– ì•„ë˜ë©´(Bottom) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[18] = 1; m_pnIndices[19] = 6; m_pnIndices[20] = 5;
+	//â“— ì•„ë˜ë©´(Bottom) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[21] = 2; m_pnIndices[22] = 6; m_pnIndices[23] = 1;
+	//â“˜ ì˜†ë©´(Left) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[24] = 2; m_pnIndices[25] = 7; m_pnIndices[26] = 6;
+	//â“™ ì˜†ë©´(Left) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[27] = 3; m_pnIndices[28] = 7; m_pnIndices[29] = 2;
+	//â“š ì˜†ë©´(Right) ì‚¬ê°í˜•ì˜ ìœ„ìª½ ì‚¼ê°í˜•
+	m_pnIndices[30] = 6; m_pnIndices[31] = 4; m_pnIndices[32] = 5;
+	//â“› ì˜†ë©´(Right) ì‚¬ê°í˜•ì˜ ì•„ë˜ìª½ ì‚¼ê°í˜•
+	m_pnIndices[33] = 7; m_pnIndices[34] = 4; m_pnIndices[35] = 6;
+	//ì¸ë±ìŠ¤ ë²„í¼ë¥¼ ìƒì„±í•œë‹¤. 
+	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pnIndices,
 		sizeof(UINT) * m_nIndices,
 		D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_INDEX_BUFFER,
 		&m_pd3dIndexUploadBuffer);
-	//ÀÎµ¦½º ¹öÆÛ ºä¸¦ »ı¼ºÇÑ´Ù. 
+	//ì¸ë±ìŠ¤ ë²„í¼ ë·°ë¥¼ ìƒì„±í•œë‹¤. 
 	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
 	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
+	m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), 
+										  XMFLOAT3(fx, fy,fz),
+										  XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 }
 
 CAirplaneMeshDiffused::CAirplaneMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, 
@@ -127,162 +173,162 @@ CAirplaneMeshDiffused::CAirplaneMeshDiffused(ID3D12Device* pd3dDevice, ID3D12Gra
 	m_nSlot = 0;
 	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	float fx = fWidth * 0.5f, fy = fHeight * 0.5f, fz = fDepth * 0.5f;
-	//À§ÀÇ ±×¸²°ú °°Àº ºñÇà±â ¸Ş½¬¸¦ Ç¥ÇöÇÏ±â À§ÇÑ Á¤Á¡ µ¥ÀÌÅÍÀÌ´Ù. 
-	CDiffusedVertex pVertices[24 * 3];
+	//ìœ„ì˜ ê·¸ë¦¼ê³¼ ê°™ì€ ë¹„í–‰ê¸° ë©”ì‰¬ë¥¼ í‘œí˜„í•˜ê¸° ìœ„í•œ ì •ì  ë°ì´í„°ì´ë‹¤. 
+	CDiffusedVertex m_pVertices[24 * 3];
 	float x1 = fx * 0.2f, y1 = fy * 0.2f, x2 = fx * 0.1f, y3 = fy * 0.3f, y2 = ((y1 - (fy -
 		y3)) / x1) * x2 + (fy - y3);
 	int i = 0;
-	//ºñÇà±â ¸Ş½¬ÀÇ À§ÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ìœ„ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	//ºñÇà±â ¸Ş½¬ÀÇ ¾Æ·¡ÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ì•„ë˜ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	//ºñÇà±â ¸Ş½¬ÀÇ ¿À¸¥ÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ì˜¤ë¥¸ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	//ºñÇà±â ¸Ş½¬ÀÇ µÚÂÊ/¿À¸¥ÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ë’¤ìª½/ì˜¤ë¥¸ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(+x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	//ºñÇà±â ¸Ş½¬ÀÇ ¿ŞÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ì™¼ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), -fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, +(fy + y3), +fz),
 		Vector4::Add(xmf4Color, RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x2, +y2, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	//ºñÇà±â ¸Ş½¬ÀÇ µÚÂÊ/¿ŞÂÊ ¸é
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	//ë¹„í–‰ê¸° ë©”ì‰¬ì˜ ë’¤ìª½/ì™¼ìª½ ë©´
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(0.0f, 0.0f, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-x1, -y1, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, +fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
+	m_pVertices[i++] = CDiffusedVertex(XMFLOAT3(-fx, -y3, -fz), Vector4::Add(xmf4Color,
 		RANDOM_COLOR));
-	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices,
+	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pVertices,
 												m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT,
 												D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 												&m_pd3dVertexUploadBuffer);
@@ -292,5 +338,93 @@ CAirplaneMeshDiffused::CAirplaneMeshDiffused(ID3D12Device* pd3dDevice, ID3D12Gra
 }
 
 CAirplaneMeshDiffused::~CAirplaneMeshDiffused()
+{
+}
+
+CSphereMeshDiffused::CSphereMeshDiffused(ID3D12Device* pd3dDevice,
+	ID3D12GraphicsCommandList* pd3dCommandList, float fRadius, int nSlices, int nStacks) :
+	CMesh(pd3dDevice, pd3dCommandList)
+{
+	/*nSlicesëŠ” êµ¬ë¥¼ xz-í‰ë©´ì— í‰í–‰í•˜ê²Œ ëª‡ ë“±ë¶„í•  ê²ƒì¸ ê°€ë¥¼ ë‚˜íƒ€ë‚¸ë‹¤. nStacksì€ ì›ê¸°ë‘¥ì„ ëª‡ ì¡°ê°ìœ¼ë¡œ ìë¥¼ ê²ƒì¸
+	ê°€ë¥¼ ë‚˜íƒ€ë‚¸ë‹¤.*/
+	m_nStride = sizeof(CDiffusedVertex);
+	m_d3dPrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	/*ì›ê¸°ë‘¥ì˜ í‘œë©´ì— ìˆëŠ” ì‚¬ê°í˜•(ì¤„)ì˜ ê°œìˆ˜ëŠ” {nSlices * (nStacks-2)}ì´ë‹¤. 
+	ì‚¬ê°í˜•ë“¤ì´ ì›ê¸°ë‘¥ì˜ í‘œë©´ì„ ë”°ë¼ ì—°ì†ë˜ê³  ì²˜ìŒê³¼ 
+	ë§ˆì§€ë§‰ ì‚¬ê°í˜•ì´ ì—°ê²°ë˜ì–´ ìˆìœ¼ë¯€ë¡œ ì²« ë²ˆì§¸ ì›ê¸°ë‘¥ì„ ì œì™¸í•˜ê³  ì‚¬ê°í˜• í•˜ë‚˜ë¥¼ í‘œí˜„í•˜ê¸° ìœ„í•˜ì—¬ í•˜ë‚˜ì˜ ì •ì ì´ í•„ìš”í•˜ë‹¤.
+	ì²« ë²ˆì§¸ ì›ê¸°ë‘¥ì€ ìœ„ì•„ë˜ë¡œ ë‘ ê°œì˜ ì •ì ì´ í•„ìš”í•˜ë¯€ë¡œ ì›ê¸°ë‘¥ì˜ í‘œë©´ì˜ ì‚¬ê°í˜•ë“¤ì„ í‘œí˜„í•˜ê¸° ìœ„í•˜ì—¬
+	í•„ìš”í•œ ì •ì ì˜ ê°œìˆ˜ëŠ” {(nSlices * (nStacksâ€“1))}ì´ë‹¤. 
+	ê·¸ëŸ°ë° êµ¬ì˜ ìœ„ì™€ ì•„ë˜(êµ¬ê°€ ì§€êµ¬ë¼ê³  ê°€ì •í•  ë•Œ ë‚¨ê·¹ê³¼ ë¶ê·¹)
+	ë¥¼ ìë¥´ë©´ ì›ê¸°ë‘¥ì´ ì•„ë‹ˆë¼ ì›ë¿”ì´ ë˜ë¯€ë¡œ ì´ ì›ë¿”ì„ í‘œí˜„í•˜ê¸° ìœ„í•˜ì—¬ 2ê°œì˜ ì •ì ì´ ë” í•„ìš”í•˜ë‹¤. 
+	ê·¸ëŸ¬ë¯€ë¡œ ì •ì ì˜ ì „ì²´ ê°œìˆ˜ëŠ” {(nSlices * (nStacksâ€“1)) + 2}ì´ë‹¤.*/
+	m_nVertices = 2 + (nSlices * (nStacks - 1));
+	m_pVertices = new CDiffusedVertex[m_nVertices];
+	//180ë„ë¥¼ nStacks ë§Œí¼ ë¶„í• í•œë‹¤. 
+	float fDeltaPhi = float(XM_PI / nStacks);
+	//360ë„ë¥¼ nSlices ë§Œí¼ ë¶„í• í•œë‹¤. 
+	float fDeltaTheta = float((2.0f * XM_PI) / nSlices);
+	int k = 0;
+	//êµ¬ì˜ ìœ„(ë¶ê·¹)ë¥¼ ë‚˜íƒ€ë‚´ëŠ” ì •ì ì´ë‹¤. 
+	m_pVertices[k++] = CDiffusedVertex(0.0f, +fRadius, 0.0f, RANDOM_COLOR);
+	float theta_i, phi_j;
+	//ì›ê¸°ë‘¥ í‘œë©´ì˜ ì •ì ì´ë‹¤. 
+	for (int j = 1; j < nStacks; j++) {
+		phi_j = fDeltaPhi * j;
+		for (int i = 0; i < nSlices; i++) {
+			theta_i = fDeltaTheta * i;
+			m_pVertices[k++] = CDiffusedVertex(fRadius * sinf(phi_j) * cosf(theta_i),
+				fRadius * cosf(phi_j), fRadius * sinf(phi_j) * sinf(theta_i), RANDOM_COLOR);
+		}
+	}
+	//êµ¬ì˜ ì•„ë˜(ë‚¨ê·¹)ë¥¼ ë‚˜íƒ€ë‚´ëŠ” ì •ì ì´ë‹¤. 
+	m_pVertices[k] = CDiffusedVertex(0.0f, -fRadius, 0.0f, RANDOM_COLOR);
+	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pVertices,
+		m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT,
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
+	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
+	m_d3dVertexBufferView.StrideInBytes = m_nStride;
+	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
+	/*ì›ê¸°ë‘¥ì˜ í‘œë©´ì— ì¡´ì¬í•˜ëŠ” ì‚¬ê°í˜•ì˜ ê°œìˆ˜ëŠ” {nSlices * (nStacks-2)}ì´ê³  ì‚¬ê°í˜•ì€ 2ê°œì˜ ì‚¼ê°í˜•ìœ¼ë¡œ êµ¬ì„±ë˜ë¯€ë¡œ
+	ì‚¼ê°í˜• ë¦¬ìŠ¤íŠ¸ì¼ ë•Œ í•„ìš”í•œ ì¸ë±ìŠ¤ì˜ ê°œìˆ˜ëŠ” {nSlices * (nStacks-2) * 2 * 3}ì´ë‹¤. ê·¸ë¦¬ê³  êµ¬ì˜ ìœ„ì•„ë˜ ì›ë¿”ì˜ í‘œë©´ì— ì¡´ì¬í•˜ëŠ” ì‚¼ê°í˜•ì˜ ê°œìˆ˜ëŠ” nSlicesê°œì´ë¯€ë¡œ êµ¬ì˜ ìœ„ì•„ë˜ ì›ë¿”ì„ í‘œí˜„í•˜ê¸° ìœ„í•œ ì¸ë±ìŠ¤ì˜ ê°œìˆ˜ëŠ” {(nSlices * 3) *
+	2}ì´ë‹¤. ê·¸ëŸ¬ë¯€ë¡œ êµ¬ì˜ í‘œë©´ì„ ì‚¼ê°í˜• ë¦¬ìŠ¤íŠ¸ë¡œ í‘œí˜„í•˜ê¸° ìœ„í•˜ì—¬ í•„ìš”í•œ ì¸ë±ìŠ¤ì˜ ê°œìˆ˜ëŠ” {(nSlices * 3) * 2 +
+	(nSlices * (nStacks - 2) * 3 * 2)}ì´ë‹¤*/
+	m_nIndices = (nSlices * 3) * 2 + (nSlices * (nStacks - 2) * 3 * 2);
+	m_pnIndices = new UINT[m_nIndices];
+	k = 0;
+	//êµ¬ì˜ ìœ„ìª½ ì›ë¿”ì˜ í‘œë©´ì„ í‘œí˜„í•˜ëŠ” ì‚¼ê°í˜•ë“¤ì˜ ì¸ë±ìŠ¤ì´ë‹¤. 
+	for (int i = 0; i < nSlices; i++) {
+		m_pnIndices[k++] = 0;
+		m_pnIndices[k++] = 1 + ((i + 1) % nSlices);
+		m_pnIndices[k++] = 1 + i;
+	}
+	//êµ¬ì˜ ì›ê¸°ë‘¥ì˜ í‘œë©´ì„ í‘œí˜„í•˜ëŠ” ì‚¼ê°í˜•ë“¤ì˜ ì¸ë±ìŠ¤ì´ë‹¤. 
+	for (int j = 0; j < nStacks-2; j++) {
+		for (int i = 0; i < nSlices; i++) {
+			//ì‚¬ê°í˜•ì˜ ì²« ë²ˆì§¸ ì‚¼ê°í˜•ì˜ ì¸ë±ìŠ¤ì´ë‹¤. 
+			m_pnIndices[k++] = 1 + (i + (j * nSlices));
+			m_pnIndices[k++] = 1 + (((i + 1) % nSlices) + (j * nSlices));
+			m_pnIndices[k++] = 1 + (i + ((j + 1) * nSlices));
+			//ì‚¬ê°í˜•ì˜ ë‘ ë²ˆì§¸ ì‚¼ê°í˜•ì˜ ì¸ë±ìŠ¤ì´ë‹¤.
+			m_pnIndices[k++] = 1 + (i + ((j + 1) * nSlices));
+			m_pnIndices[k++] = 1 + (((i + 1) % nSlices) + (j * nSlices));
+			m_pnIndices[k++] = 1 + (((i + 1) % nSlices) + ((j + 1) * nSlices));
+		}
+	}
+	//êµ¬ì˜ ì•„ë˜ìª½ ì›ë¿”ì˜ í‘œë©´ì„ í‘œí˜„í•˜ëŠ” ì‚¼ê°í˜•ë“¤ì˜ ì¸ë±ìŠ¤ì´ë‹¤. 
+	for (int i = 0; i < nSlices; i++) {
+		m_pnIndices[k++] = (m_nVertices - 1);
+		m_pnIndices[k++] = ((m_nVertices - 1) - nSlices) + i;
+		m_pnIndices[k++] = ((m_nVertices - 1) - nSlices) + ((i + 1) % nSlices);
+	}
+	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pnIndices,
+						sizeof(UINT) * m_nIndices, 
+						D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_INDEX_BUFFER,
+						&m_pd3dIndexUploadBuffer);
+	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
+	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
+	m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(fRadius, fRadius, fRadius), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+CSphereMeshDiffused::~CSphereMeshDiffused()
 {
 }

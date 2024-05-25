@@ -217,31 +217,29 @@ D3D12_SHADER_BYTECODE CObjectsShader::CreatePixelShader(ID3DBlob** ppd3dShaderBl
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSDiffused", "ps_5_1", ppd3dShaderBlob));
 }
-
 void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	//가로x세로x높이가 12x12x12인 정육면체 메쉬를 생성한다. 
-	CCubeMeshDiffused *pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList,
-	12.0f, 12.0f, 12.0f);
-	/*x-축, y-축, z-축 양의 방향의 객체 개수이다. 각 값을 1씩 늘리거나 줄이면서 실행할 때 프레임 레이트가 어떻게
-	변하는 가를 살펴보기 바란다.*/
+	CCubeMeshDiffused* pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList,
+		12.0f, 12.0f, 12.0f);
+	//구 메쉬를 생성한다.
+	CSphereMeshDiffused *pSphereMesh = new CSphereMeshDiffused(pd3dDevice,
+	pd3dCommandList, 6.0f, 20, 20);
 	int xObjects = 10, yObjects = 10, zObjects = 10, i = 0;
-	//x-축, y-축, z-축으로 21개씩 총 21 x 21 x 21 = 9261개의 정육면체를 생성하고 배치한다. 
 	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
 	m_ppObjects = new CGameObject * [m_nObjects];
 	float fxPitch = 12.0f * 2.5f;
 	float fyPitch = 12.0f * 2.5f;
 	float fzPitch = 12.0f * 2.5f;
 	CRotatingObject* pRotatingObject = nullptr;
-	for (int x = -xObjects; x <= xObjects; x++)	{
+	for (int x = -xObjects; x <= xObjects; x++) {
 		for (int y = -yObjects; y <= yObjects; y++) {
 			for (int z = -zObjects; z <= zObjects; z++) {
 				pRotatingObject = new CRotatingObject();
-				pRotatingObject->SetMesh(pCubeMesh);
-				//각 정육면체 객체의 위치를 설정한다. 
-				pRotatingObject->SetPosition(fxPitch*x, fyPitch*y, fzPitch*z);
+				//직육면체와 구 메쉬를 교대로 배치한다. 
+				pRotatingObject->SetMesh((i % 2) ? (CMesh *)pCubeMesh : (CMesh *)pSphereMesh);
+				pRotatingObject->SetPosition(fxPitch * x, fyPitch * y, fzPitch * z);
 				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-				pRotatingObject->SetRotationSpeed(10.0f * (i % 10) + 3.0f);
+				pRotatingObject->SetRotationSpeed(10.0f * (i % 10));
 				m_ppObjects[i++] = pRotatingObject;
 			}
 		}
@@ -264,6 +262,23 @@ void CObjectsShader::AnimateObjects(float fTimeElapsed)
 	for (int j = 0; j < m_nObjects; j++) {
 		m_ppObjects[j]->Animate(fTimeElapsed);
 	}
+}
+
+CGameObject* CObjectsShader::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance)
+{
+	int nIntersected = 0;
+	*pfNearHitDistance = FLT_MAX;
+	float fHitDistance = FLT_MAX;
+	CGameObject* pSelectedObject = nullptr;
+	for (int j = 0; j < m_nObjects; j++) {
+		nIntersected = m_ppObjects[j]->PickObjectByRayIntersection(xmf3PickPosition,
+			xmf4x4View, &fHitDistance);
+		if ((nIntersected > 0) && (fHitDistance < *pfNearHitDistance)) {
+			*pfNearHitDistance = fHitDistance;
+			pSelectedObject = m_ppObjects[j];
+		}
+	}
+	return(pSelectedObject);
 }
 
 void CObjectsShader::ReleaseUploadBuffers()

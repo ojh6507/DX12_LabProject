@@ -38,6 +38,7 @@ public:
 	virtual ~CMesh();
 private:
 	int m_nReferences = 0;
+	//정점을 픽킹을 위하여 저장한다(정점 버퍼를 Map()하여 읽지 않아도 되도록).
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
@@ -45,6 +46,9 @@ public:
 protected:
 	ID3D12Resource* m_pd3dIndexBuffer = nullptr;
 	ID3D12Resource* m_pd3dIndexUploadBuffer = nullptr;
+	CDiffusedVertex* m_pVertices = nullptr;
+	//메쉬의 인덱스를 저장한다(인덱스 버퍼를 Map()하여 읽지 않아도 되도록).
+	UINT* m_pnIndices = nullptr;
 	
 	/*인덱스 버퍼(인덱스의 배열)와 인덱스 버퍼를 위한 업로드 버퍼에 대한 인터페이스 포인터이다. 
 	인덱스 버퍼는 정점 버퍼(배열)에 대한 인덱스를 가진다.*/
@@ -64,8 +68,12 @@ protected:
 	UINT m_nVertices = 0;
 	UINT m_nStride = 0;
 	UINT m_nOffset = 0;
+	//모델 좌표계의 OOBB 바운딩 박스이다. 
+	BoundingOrientedBox m_xmBoundingBox;
 public:
+	int CheckRayIntersection(XMFLOAT3& xmRayPosition, XMFLOAT3& xmRayDirection, float* pfNearHitDistance);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
 };
 
 class CTriangleMesh : public CMesh
@@ -91,4 +99,12 @@ public:
 		* pd3dCommandList, float fWidth = 20.0f, float fHeight = 20.0f, float fDepth = 4.0f,
 		XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f));
 	virtual ~CAirplaneMeshDiffused();
+};
+
+class CSphereMeshDiffused : public CMesh
+{
+public:
+	CSphereMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
+		* pd3dCommandList, float fRadius = 2.0f, int nSlices = 20, int nStacks = 20);
+	virtual ~CSphereMeshDiffused();
 };

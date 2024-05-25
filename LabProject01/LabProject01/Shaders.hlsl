@@ -31,13 +31,13 @@ VS_OUTPUT VSDiffused(VS_INPUT input)
     VS_OUTPUT output;
     //정점을 변환(월드 변환, 카메라 변환, 투영 변환)한다. 
     output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxWorld), gmtxView),gmtxProjection);
-    output.color = input.
-color;
+    output.color = input.color;
+    output.color.rgb = pow(input.color.rgb, 1.f / 2.2f);
     return (output);
 }
 
 //픽셀 셰이더를 정의한다. 
 float4 PSDiffused(VS_OUTPUT input) : SV_TARGET
 {
-    return (input.color);
+    return (pow(input.color, 1.0f / 2.2f));
 }

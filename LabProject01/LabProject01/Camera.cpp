@@ -76,6 +76,7 @@ void CCamera::RegenerateViewMatrix()
 	m_xmf4x4View._41 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Right);
 	m_xmf4x4View._42 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Up);
 	m_xmf4x4View._43 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Look);
+	GenerateFrustum();
 }
 void CCamera::GenerateProjectionMatrix(float fNearPlaneDistance, float fFarPlaneDistance, float fAspectRatio, float fFOVAngle)
 {
@@ -114,6 +115,20 @@ void CCamera::SetViewportsAndScissorRects(ID3D12GraphicsCommandList* pd3dCommand
 {
 	pd3dCommandList->RSSetViewports(1, &m_d3dViewport);
 	pd3dCommandList->RSSetScissorRects(1, &m_d3dScissorRect);
+}
+
+void CCamera::GenerateFrustum()
+{
+	//원근 투영 변환 행렬에서 절두체를 생성한다(절두체는 카메라 좌표계로 표현된다).
+	m_xmFrustum.CreateFromMatrix(m_xmFrustum, XMLoadFloat4x4(&m_xmf4x4Projection));
+	//카메라 변환 행렬의 역행렬을 구한다. 
+	XMMATRIX xmmtxInversView = XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_xmf4x4View));
+	//절두체를 카메라 변환 행렬의 역행렬로 변환한다(이제 절두체는 월드 좌표계로 표현된다).
+	m_xmFrustum.Transform(m_xmFrustum, xmmtxInversView);
+}
+bool CCamera::IsInFrustum(BoundingOrientedBox& xmBoundingBox)
+{
+	return(m_xmFrustum.Intersects(xmBoundingBox));
 }
 
 //스페이스-쉽 카메라를 플레이어의 로컬 x-축(Right), y-축(Up), z-축(Look)을 기준으로 회전하는 함수이다. 

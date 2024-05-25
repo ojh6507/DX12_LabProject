@@ -48,6 +48,16 @@ void CGameObject::ReleaseUploadBuffers()
 	//정점 버퍼를 위한 업로드 버퍼를 소멸시킨다. 
 	if (m_pMesh) m_pMesh->ReleaseUploadBuffers();
 }
+bool CGameObject::IsVisible(CCamera* pCamera)
+{
+	OnPrepareRender();
+	bool bIsVisible = false;
+	BoundingOrientedBox xmBoundingBox = m_pMesh->GetBoundingBox();
+	//모델 좌표계의 바운딩 박스를 월드 좌표계로 변환한다.
+	xmBoundingBox.Transform(xmBoundingBox, XMLoadFloat4x4(&m_xmf4x4World));
+	if (pCamera) bIsVisible = pCamera->IsInFrustum(xmBoundingBox);
+	return(bIsVisible);
+}
 void CGameObject::Animate(float fTimeElapsed)
 {
 }
@@ -57,11 +67,37 @@ void CGameObject::OnPrepareRender()
 
 void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
-	OnPrepareRender();
-	//객체의 정보를 셰이더 변수(상수 버퍼)로 복사한다. 
-	UpdateShaderVariables(pd3dCommandList);
-	if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera);
-	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
+	//게임 객체가 카메라에 보이면 렌더링한다. 
+	if (IsVisible(pCamera)) {
+		UpdateShaderVariables(pd3dCommandList);
+		if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera);
+		if (m_pMesh) m_pMesh->Render(pd3dCommandList);
+	}
+}
+void CGameObject::GenerateRayForPicking(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View,
+										XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection)
+{
+	XMFLOAT4X4 xmf4x4WorldView = Matrix4x4::Multiply(m_xmf4x4World, xmf4x4View);
+	XMFLOAT4X4 xmf4x4Inverse = Matrix4x4::Inverse(xmf4x4WorldView);
+	XMFLOAT3 xmf3CameraOrigin(0.0f, 0.0f, 0.0f);
+	//카메라 좌표계의 원점을 모델 좌표계로 변환한다.
+	*pxmf3PickRayOrigin = Vector3::TransformCoord(xmf3CameraOrigin, xmf4x4Inverse);
+	//카메라 좌표계의 점(마우스 좌표를 역변환하여 구한 점)을 모델 좌표계로 변환한다. 
+	*pxmf3PickRayDirection = Vector3::TransformCoord(xmf3PickPosition, xmf4x4Inverse);
+	//광선의 방향 벡터를 구한다. 
+	*pxmf3PickRayDirection = Vector3::Normalize(Vector3::Subtract(*pxmf3PickRayDirection, *pxmf3PickRayOrigin));
+}
+int CGameObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfHitDistance)
+{
+	int nIntersected = 0;
+	if (m_pMesh) {
+		XMFLOAT3 xmf3PickRayOrigin, xmf3PickRayDirection;
+		//모델 좌표계의 광선을 생성한다. 
+		GenerateRayForPicking(xmf3PickPosition, xmf4x4View, &xmf3PickRayOrigin, &xmf3PickRayDirection);
+		//모델 좌표계의 광선과 메쉬의 교차를 검사한다.
+		nIntersected = m_pMesh->CheckRayIntersection(xmf3PickRayOrigin, xmf3PickRayDirection, pfHitDistance);
+	}
+	return(nIntersected);
 }
 CRotatingObject::CRotatingObject()
 {

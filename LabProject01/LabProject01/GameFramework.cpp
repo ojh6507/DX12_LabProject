@@ -267,7 +267,7 @@ void CGameFramework::CreateDepthStencilView() {
 
 void CGameFramework::BuildObjects()
 {
-	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, nullptr);
 	m_pScene = new CScene();
 	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 	CAirplanePlayer* pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList,
@@ -344,6 +344,10 @@ LRESULT CALLBACK CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT  nMes
 	}
 	case WM_LBUTTONDOWN:
 	case WM_RBUTTONDOWN:
+		m_pSelectedObject = m_pScene->PickObjectPointedByCursor(LOWORD(lParam), HIWORD(lParam), m_pCamera);
+		::SetCapture(hWnd);
+		::GetCursorPos(&m_ptOldCursorPos);
+		break;
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_MOUSEMOVE:
@@ -355,6 +359,21 @@ LRESULT CALLBACK CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT  nMes
 		break;
 	}
 	return (0);
+}
+
+void CGameFramework::ProcessSelectedObject(DWORD dwDirection, float cxDelta, float cyDelta)
+{
+	if (dwDirection != 0) {
+		if (dwDirection & DIR_FORWARD) m_pSelectedObject->MoveForward(+1.0f);
+		if (dwDirection & DIR_BACKWARD) m_pSelectedObject->MoveForward(-1.0f);
+		if (dwDirection & DIR_LEFT) m_pSelectedObject->MoveStrafe(+1.0f);
+		if (dwDirection & DIR_RIGHT) m_pSelectedObject->MoveStrafe(-1.0f);
+		if (dwDirection & DIR_UP) m_pSelectedObject->MoveUp(+1.0f);
+		if (dwDirection & DIR_DOWN) m_pSelectedObject->MoveUp(-1.0f);
+	}
+	else if ((cxDelta != 0.0f) || (cyDelta != 0.0f)) {
+		m_pSelectedObject->Rotate(cyDelta, cxDelta, 0.0f);
+	}
 }
 
 void CGameFramework::ProcessInput()
@@ -379,7 +398,7 @@ void CGameFramework::ProcessInput()
 	것은 마우스 버튼이 눌려진 상태를 의미한다. 마우스 버튼이 눌려진 상태에서 마우스를 좌우 또는 상하로 움직이면 플레이어를 x-축 또는 y-축으로 회전한다.*/
 	if (::GetCapture() == m_hWnd) {
 		//마우스 커서를 화면에서 없앤다(보이지 않게 한다).
-		::SetCursor(NULL);
+		::SetCursor(nullptr);
 		//현재 마우스 커서의 위치를 가져온다. 
 		::GetCursorPos(&ptCursorPos);
 		//마우스 버튼이 눌린 상태에서 마우스가 움직인 양을 구한다. 
@@ -390,16 +409,21 @@ void CGameFramework::ProcessInput()
 	}
 	//마우스 또는 키 입력이 있으면 플레이어를 이동하거나(dwDirection) 회전한다(cxDelta 또는 cyDelta).
 	if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f)) {
-		if (cxDelta || cyDelta) {
-			/*cxDelta는 y-축의 회전을 나타내고 cyDelta는 x-축의 회전을 나타낸다. 오른쪽 마우스 버튼이 눌려진 경우
-			cxDelta는 z-축의 회전을 나타낸다.*/
-			if (pKeyBuffer[VK_RBUTTON] & 0xF0)
-				m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
-			else
-				m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+		if (m_pSelectedObject) {
+			ProcessSelectedObject(dwDirection, cxDelta, cyDelta);
 		}
-		/*플레이어를 dwDirection 방향으로 이동한다(실제로는 속도 벡터를 변경한다). 이동 거리는 시간에 비례하도록 한다. 플레이어의 이동 속력은 (50/초)로 가정한다.*/
-		if (dwDirection) m_pPlayer->Move(dwDirection, 200.0f * m_GameTimer.GetTimeElapsed(), true);
+		else {
+			if (cxDelta || cyDelta) {
+				/*cxDelta는 y-축의 회전을 나타내고 cyDelta는 x-축의 회전을 나타낸다. 오른쪽 마우스 버튼이 눌려진 경우
+				cxDelta는 z-축의 회전을 나타낸다.*/
+				if (pKeyBuffer[VK_RBUTTON] & 0xF0)
+					m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
+				else
+					m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+			}
+			/*플레이어를 dwDirection 방향으로 이동한다(실제로는 속도 벡터를 변경한다). 이동 거리는 시간에 비례하도록 한다. 플레이어의 이동 속력은 (50/초)로 가정한다.*/
+			if (dwDirection) m_pPlayer->Move(dwDirection, 200.0f * m_GameTimer.GetTimeElapsed(), true);
+		}
 	}
 	//플레이어를 실제로 이동하고 카메라를 갱신한다. 중력과 마찰력의 영향을 속도 벡터에 적용한다.
 	m_pPlayer->Update(m_GameTimer.GetTimeElapsed());
@@ -430,7 +454,7 @@ void CGameFramework::FrameAdvance()
 	ProcessInput();
 	AnimateObjects();
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
-	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, nullptr);
 	D3D12_RESOURCE_BARRIER d3dResourceBarrier;
 	::ZeroMemory(&d3dResourceBarrier, sizeof(D3D12_RESOURCE_BARRIER));
 	d3dResourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -443,18 +467,18 @@ void CGameFramework::FrameAdvance()
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	d3dRtvCPUDescriptorHandle.ptr += (m_nSwapChainBufferIndex *	m_nRtvDescriptorIncrementSize);
 	float pfClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f };
-	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor/*Colors::Azure*/, 0, NULL);
+	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor/*Colors::Azure*/, 0, nullptr);
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle,
 						D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-						1.0f, 0, 0, NULL);
+						1.0f, 0, 0, nullptr);
 	m_pd3dCommandList->OMSetRenderTargets(1, &d3dRtvCPUDescriptorHandle, TRUE,&d3dDsvCPUDescriptorHandle);
 	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
 	//3인칭 카메라일 때 플레이어가 항상 보이도록 렌더링한다. 
 #ifdef _WITH_PLAYER_TOP
 	//렌더 타겟은 그대로 두고 깊이 버퍼를 1.0으로 지우고 플레이어를 렌더링하면 플레이어는 무조건 그려질 것이다. 
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle,
-	D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 #endif
 	//3인칭 카메라일 때 플레이어를 렌더링한다. 
 	if (m_pPlayer) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);

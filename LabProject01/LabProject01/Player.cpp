@@ -3,7 +3,7 @@
 
 CPlayer::CPlayer()
 {
-	m_pCamera = NULL;
+	m_pCamera = nullptr;
 	m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	m_xmf3Right = XMFLOAT3(1.0f, 0.0f, 0.0f);
 	m_xmf3Up = XMFLOAT3(0.0f, 1.0f, 0.0f);
@@ -16,8 +16,8 @@ CPlayer::CPlayer()
 	m_fPitch = 0.0f;
 	m_fRoll = 0.0f;
 	m_fYaw = 0.0f;
-	m_pPlayerUpdatedContext = NULL;
-	m_pCameraUpdatedContext = NULL;
+	m_pPlayerUpdatedContext = nullptr;
+	m_pCameraUpdatedContext = nullptr;
 }
 CPlayer::~CPlayer()
 {
