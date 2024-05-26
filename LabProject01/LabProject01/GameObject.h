@@ -3,6 +3,35 @@
 #include "Camera.h"
 
 class CShader;
+
+struct MATERIAL
+{
+	XMFLOAT4 m_xmf4Ambient;
+	XMFLOAT4 m_xmf4Diffuse;
+	XMFLOAT4 m_xmf4Specular; //(r,g,b,a=power)
+	XMFLOAT4 m_xmf4Emissive;
+};
+class CMaterial
+{
+public:
+	CMaterial();
+	virtual ~CMaterial();
+private:
+	int m_nReferences = 0;
+public:
+	void AddRef() { m_nReferences++; }
+	void Release() { if (--m_nReferences <= 0) delete this; }
+	//재질의 기본 색상
+	XMFLOAT4 m_xmf4Albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	//재질의 번호
+	UINT m_nReflection = 0;
+	//재질을 적용하여 렌더링을 하기 위한 쉐이더
+	CShader* m_pShader = NULL;
+	void SetAlbedo(XMFLOAT4& xmf4Albedo) { m_xmf4Albedo = xmf4Albedo; }
+	void SetReflection(UINT nReflection) { m_nReflection = nReflection; }
+	void SetShader(CShader* pShader);
+};
+
 class CGameObject
 {
 public:
@@ -11,10 +40,10 @@ public:
 private:
 	int m_nReferences = 0;
 protected:
-	XMFLOAT4X4 m_xmf4x4World;
 	CMesh* m_pMesh{};
-	CShader* m_pShader{};
 public:
+	XMFLOAT4X4 m_xmf4x4World;
+	CMaterial* m_pMaterial = NULL;
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 public:
@@ -35,6 +64,10 @@ public:
 	//게임 객체의 위치를 설정한다. 
 	void SetPosition(float x, float y, float z);
 	void SetPosition(XMFLOAT3 xmf3Position);
+
+	void SetMaterial(CMaterial* pMaterial);
+	void SetMaterial(UINT nReflection);
+
 	//게임 객체를 로컬 x-축, y-축, z-축 방향으로 이동한다.
 	void MoveStrafe(float fDistance = 1.0f);
 	void MoveUp(float fDistance = 1.0f);

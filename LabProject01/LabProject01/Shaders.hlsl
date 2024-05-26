@@ -18,19 +18,29 @@ cbuffer cbGameObjectInfo : register(b2)
 
 #include "Light.hlsl"
 
-//정점 셰이더의 입력을 위한 구조체를 선언한다. 
-struct VS_INPUT
+struct VS_DIFFUSED_INPUT
 {
     float3 position : POSITION;
     float4 color : COLOR;
 };
-
 //정점 셰이더의 출력(픽셀 셰이더의 입력)을 위한 구조체를 선언한다. 
-struct VS_OUTPUT
+struct VS_DIFFUSED_OUTPUT
 {
     float4 position : SV_POSITION;
     float4 color : COLOR;
 };
+
+VS_DIFFUSED_OUTPUT VSPlayer(VS_DIFFUSED_INPUT input)
+{
+    VS_DIFFUSED_OUTPUT output;
+    output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxPlayerWorld), gmtxView), gmtxProjection);
+    output.color = input.color;
+    return (output);
+}
+float4 PSPlayer(VS_DIFFUSED_OUTPUT input) : SV_TARGET
+{
+    return (pow(input.color, 1.f / 2.2f));
+}
 
 
 //정점 조명을 사용
@@ -52,18 +62,6 @@ struct VS_LIGHTING_OUTPUT
 #endif
 };
 
-VS_OUTPUT VSPlayer(VS_INPUT input)
-{
-    VS_OUTPUT output;
-    output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxGameObject), gmtxView), gmtxProjection);
-    output.color = input.color;
-    return (output);
-}
-float4 PSPlayer(VS_INPUT input) : SV_TARGET
-{
-    return (input.color);
-}
-
 //정점 쉐이더 함수
 VS_LIGHTING_OUTPUT VSLighting(VS_LIGHTING_INPUT input)
 {
@@ -73,17 +71,17 @@ VS_LIGHTING_OUTPUT VSLighting(VS_LIGHTING_INPUT input)
     float3 normalW = mul(input.normal, (float3x3) gmtxGameObject);
 #ifdef _WITH_VERTEX_LIGHTING
     output.color = Lighting(output.positionW, normalize(normalW));
-    output.color = float4(input.normal, 1);
 #else
 output.normalW = normalW;
 #endif
     return (output);
 }
+
 //픽셀 쉐이더 함수
 float4 PSLighting(VS_LIGHTING_OUTPUT input) : SV_TARGET
 {
 #ifdef _WITH_VERTEX_LIGHTING
-    return (input.color);
+    return (pow(input.color, 1.f/2.2f));
 #else
 float3 normalW = normalize(input.normalW);
 float4 color = Lighting(input.positionW, normalW);

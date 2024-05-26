@@ -31,6 +31,26 @@ public:
 	~CDiffusedVertex() { }
 };
 
+class CIlluminatedVertex : public CVertex
+{
+protected:
+	XMFLOAT3 m_xmf3Normal;
+public:
+	CIlluminatedVertex() {
+		m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); 
+		m_xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	}
+	CIlluminatedVertex(float x, float y, float z, XMFLOAT3 xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f)) {
+		m_xmf3Position = XMFLOAT3(x, y, z); 
+		m_xmf3Normal = xmf3Normal;
+	}
+	CIlluminatedVertex(XMFLOAT3 xmf3Position, XMFLOAT3 xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f)) {
+		m_xmf3Position = xmf3Position; 
+		m_xmf3Normal = xmf3Normal;
+	}
+	~CIlluminatedVertex() { }
+};
+
 class CMesh
 {
 public:
@@ -107,4 +127,28 @@ public:
 	CSphereMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 		* pd3dCommandList, float fRadius = 2.0f, int nSlices = 20, int nStacks = 20);
 	virtual ~CSphereMeshDiffused();
+};
+
+
+class CMeshIlluminated : public CMesh
+{
+public:
+	CMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual ~CMeshIlluminated();
+public:
+	void CalculateTriangleListVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, int nVertices);
+	void CalculateTriangleListVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, 
+											UINT nVertices, UINT* pnIndices, UINT nIndices);
+	void CalculateTriangleStripVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions,
+											 UINT nVertices, UINT* pnIndices, UINT nIndices);
+	void CalculateVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, 
+								int nVertices, UINT* pnIndices, int nIndices);
+};
+
+class CCubeMeshIlluminated : public CMeshIlluminated
+{
+public:
+	CCubeMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, 
+						float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
+	virtual ~CCubeMeshIlluminated();
 };

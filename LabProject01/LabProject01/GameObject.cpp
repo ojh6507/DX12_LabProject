@@ -7,18 +7,29 @@ CGameObject::CGameObject()
 CGameObject::~CGameObject()
 {
 	if (m_pMesh) m_pMesh->Release();
-	if (m_pShader)
-	{
-		m_pShader->ReleaseShaderVariables();
-		m_pShader->Release();
-	}
+	if (m_pMaterial) m_pMaterial->Release();
 }
 void CGameObject::SetShader(CShader* pShader)
 {
-	if (m_pShader) m_pShader->Release();
-	m_pShader = pShader;
-	if (m_pShader) m_pShader->AddRef();
+	if (!m_pMaterial) {
+		m_pMaterial = new CMaterial();
+		m_pMaterial->AddRef();
+	}
+	if (m_pMaterial) m_pMaterial->SetShader(pShader);
 }
+
+void CGameObject::SetMaterial(CMaterial* pMaterial)
+{
+	if (m_pMaterial) m_pMaterial->Release();
+	m_pMaterial = pMaterial;
+	if (m_pMaterial) m_pMaterial->AddRef();
+}
+void CGameObject::SetMaterial(UINT nReflection)
+{
+	if (!m_pMaterial) m_pMaterial = new CMaterial();
+	m_pMaterial->m_nReflection = nReflection;
+}
+
 void CGameObject::Rotate(XMFLOAT3* pxmf3Axis, float fAngle)
 {
 	XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(pxmf3Axis), XMConvertToRadians(fAngle));
@@ -67,12 +78,14 @@ void CGameObject::OnPrepareRender()
 
 void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
-	//게임 객체가 카메라에 보이면 렌더링한다. 
-	if (IsVisible(pCamera)) {
-		UpdateShaderVariables(pd3dCommandList);
-		if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera);
-		if (m_pMesh) m_pMesh->Render(pd3dCommandList);
+	OnPrepareRender();
+	if (m_pMaterial) {
+		if (m_pMaterial->m_pShader) {
+			m_pMaterial->m_pShader->Render(pd3dCommandList, pCamera);
+			m_pMaterial->m_pShader->UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
+		}
 	}
+	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
 }
 void CGameObject::GenerateRayForPicking(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View,
 										XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection)
@@ -171,4 +184,24 @@ void CGameObject::Rotate(float fPitch, float fYaw, float fRoll)
 	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch),
 		XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
 	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
+}
+
+
+//-------------------------------------------------------
+CMaterial::CMaterial()
+{
+	m_xmf4Albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+}
+CMaterial::~CMaterial()
+{
+	if (m_pShader) {
+		m_pShader->ReleaseShaderVariables();
+		m_pShader->Release();
+	}
+}
+void CMaterial::SetShader(CShader* pShader)
+{
+	if (m_pShader) m_pShader->Release();
+	m_pShader = pShader;
+	if (m_pShader) m_pShader->AddRef();
 }
