@@ -37,6 +37,13 @@ protected:
 	LPVOID m_pCameraUpdatedContext;
 	//플레이어에 현재 설정된 카메라이다.
 	CCamera *m_pCamera = nullptr;
+
+	bool m_bBlowingUp{};
+	std::vector<CBulletObject*>m_ppBullets;
+	float m_fElapsedTimes = 0.0f;
+	float m_fDuration = 3.5f;
+	float m_fExplosionSpeed = 10.0f;
+	float m_fExplosionRotation = 720.0f;
 public:
 	CPlayer();
 	virtual ~CPlayer();
@@ -79,7 +86,6 @@ public:
 	void SetCameraUpdatedContext(LPVOID pContext) { m_pCameraUpdatedContext = pContext; }
 	virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
-	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	//카메라를 변경하기 위하여 호출하는 함수이다. 
 	CCamera *OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode);
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) {
@@ -97,5 +103,8 @@ public:
 	CAirplanePlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
 	virtual ~CAirplanePlayer();
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
+	virtual void FireBullet(CGameObject* pLockedObject = nullptr);
 	virtual void OnPrepareRender();
+	virtual void Animate(float fElapsedTime);
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = nullptr);
 };

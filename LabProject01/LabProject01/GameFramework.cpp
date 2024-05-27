@@ -315,6 +315,9 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 			break;
 		case VK_RETURN:
 			break;
+		case VK_CONTROL:
+			((CAirplanePlayer*)m_pPlayer)->FireBullet();
+			break;
 		case VK_F1:
 		case VK_F2:
 		case VK_F3:
@@ -432,6 +435,7 @@ void CGameFramework::ProcessInput()
 
 
 void CGameFramework::AnimateObjects() {
+	if (m_pPlayer) ((CAirplanePlayer* )m_pPlayer)->Animate(m_GameTimer.GetTimeElapsed());
 	if (m_pScene) m_pScene->AnimateObjects(m_GameTimer.GetTimeElapsed());
 
 }

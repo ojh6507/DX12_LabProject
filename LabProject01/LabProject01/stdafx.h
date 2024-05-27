@@ -18,6 +18,7 @@
 ///////////////////////////
 //23.05.12 다이렉트 파일 추가하기
 #include <string>
+#include <vector>
 #include <wrl.h>	
 #include <shellapi.h>
 
@@ -48,6 +49,9 @@ using Microsoft::WRL::ComPtr;
 #define FRAME_BUFFER_WIDTH 800	
 #define FRAME_BUFFER_HEIGHT 600
 #define DegreeToRadian(x)	float((x)*3.141592654f/180.0f)
+
+#define BULLETS					50
+#define EXPLOSION_DEBRISES		240
 
 #define RANDOM_COLOR XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
 

@@ -15,7 +15,10 @@ cbuffer cbGameObjectInfo : register(b2)
     matrix gmtxGameObject : packoffset(c0);
     uint gnMaterial : packoffset(c4);
 };
-
+cbuffer BulletBuffer : register(b5)
+{
+    matrix worldMatrix : packoffset(c0);
+};
 #include "Light.hlsl"
 
 struct VS_DIFFUSED_INPUT
@@ -38,6 +41,19 @@ VS_DIFFUSED_OUTPUT VSPlayer(VS_DIFFUSED_INPUT input)
     return (output);
 }
 float4 PSPlayer(VS_DIFFUSED_OUTPUT input) : SV_TARGET
+{
+    return (pow(input.color, 1.f / 2.2f));
+}
+
+
+VS_DIFFUSED_OUTPUT VSDiffused(VS_DIFFUSED_INPUT input)
+{
+    VS_DIFFUSED_OUTPUT output;
+    output.position = mul(mul(mul(float4(input.position, 1.0f), worldMatrix), gmtxView), gmtxProjection);
+    output.color = input.color;
+    return (output);
+}
+float4 PSDiffused(VS_DIFFUSED_OUTPUT input) : SV_TARGET
 {
     return (pow(input.color, 1.f / 2.2f));
 }
