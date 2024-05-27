@@ -18,6 +18,7 @@
 ///////////////////////////
 //23.05.12 다이렉트 파일 추가하기
 #include <string>
+#include <stack>
 #include <vector>
 #include <wrl.h>	
 #include <shellapi.h>

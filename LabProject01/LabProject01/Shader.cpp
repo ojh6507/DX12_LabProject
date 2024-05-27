@@ -101,8 +101,7 @@ D3D12_SHADER_BYTECODE CShader::CompileShaderFromFile(const WCHAR* pszFileName, L
 	HRESULT hResult = ::D3DCompileFromFile(pszFileName, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, 
 										   pszShaderName, pszShaderProfile, nCompileFlags, 0, ppd3dShaderBlob, &pd3dErrorBlob);
 	
-	if (pd3dErrorBlob)
-	{
+	if (pd3dErrorBlob) {
 		OutputDebugStringA(static_cast<char*>(pd3dErrorBlob->GetBufferPointer()));
 		pd3dErrorBlob->Release();
 	}
@@ -289,12 +288,9 @@ void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 	float fyPitch = 12.0f * 2.5f;
 	float fzPitch = 12.0f * 2.5f;
 	CRotatingObject* pRotatingObject = NULL;
-	for (int x = -xObjects; x <= xObjects; x++)
-	{
-		for (int y = -yObjects; y <= yObjects; y++)
-		{
-			for (int z = -zObjects; z <= zObjects; z++)
-			{
+	for (int x = -xObjects; x <= xObjects; x++) {
+		for (int y = -yObjects; y <= yObjects; y++) {
+			for (int z = -zObjects; z <= zObjects; z++) {
 				pRotatingObject = new CRotatingObject();
 				pRotatingObject->SetMaterial(i % MAX_MATERIALS);
 				pRotatingObject->SetMesh(pCubeMesh);
