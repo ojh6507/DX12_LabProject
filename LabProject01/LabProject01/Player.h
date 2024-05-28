@@ -37,6 +37,7 @@ protected:
 	LPVOID m_pCameraUpdatedContext;
 	//플레이어에 현재 설정된 카메라이다.
 	CCamera *m_pCamera = nullptr;
+	CGameObject *m_target = nullptr;
 
 	bool m_bBlowingUp{};
 	float m_fElapsedTimes = 0.0f;
@@ -70,7 +71,8 @@ public:
 	float GetRoll() { return(m_fRoll); }
 	CCamera* GetCamera() { return(m_pCamera); }
 	void SetCamera(CCamera* pCamera) { m_pCamera = pCamera; }
-	//플레이어를 이동하는 함수이다. 
+	void SetTarget(CGameObject* target) { m_target = target; }
+	void LookAt(const XMFLOAT3& xmf3LookAt, const XMFLOAT3& xmf3Up);
 	void Move(ULONG nDirection, float fDistance, bool bVelocity = false);
 	void Move(const XMFLOAT3& xmf3Shift, bool bVelocity = false);
 	void Move(float fxOffset = 0.0f, float fyOffset = 0.0f, float fzOffset = 0.0f);
@@ -133,5 +135,9 @@ private:
 	std::vector<CBulletObject*>m_ppBullets;
 	float m_fBulletFireDelay{0.4f};
 	float m_fTimeSinceLastBarrage{};
+	XMFLOAT3 m_RandomDirection{};
+	float m_ChangeDirectionInterval{ 5.f };
+	float m_TimeSinceLastDirectionChange{ 5.f };
+
 
 };

@@ -44,6 +44,7 @@ public:
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	void SetPlayer(CCharacter* pPlayer) { m_pPlayer = pPlayer; m_pShaders->SetPlayer(pPlayer); }
 	void ReleaseObjects();
 	bool ProcessInput(UCHAR* pKeysBuffer);
 	void AnimateObjects(float fTimeElapsed);
@@ -57,10 +58,8 @@ protected:
 	CObjectsShader* m_pShaders = nullptr;
 	int m_nShaders = 0;
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = nullptr;
-
-public:
-	CCharacter* m_pPlayer = NULL;
 protected:
+	CCharacter* m_pPlayer = nullptr;
 	//씬의 조명
 	LIGHTS* m_pLights = NULL;
 	//조명을 나타내는 리소스와 리소스에 대한 포인터이다. 

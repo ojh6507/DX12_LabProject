@@ -42,7 +42,9 @@ public:
 
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
-	
+	virtual void SetPlayer(CCharacter* pTarget) { m_pTarget = pTarget; };
+protected:
+	CCharacter* m_pTarget = nullptr;
 protected:
 	ID3D12PipelineState** m_ppd3dPipelineStates = nullptr;
 	int m_nPipelineStates = 0;
@@ -94,6 +96,7 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 	void RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
+	virtual void SetPlayer(CCharacter* pTarget);
 protected:
 	std::vector<std::unique_ptr<CGameObject>> m_ppObjects;
 };

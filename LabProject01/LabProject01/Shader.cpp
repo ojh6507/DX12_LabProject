@@ -302,6 +302,8 @@ void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 		randomPosition.z = distribution(generator);
 
 		pEnemyObject->SetPosition(randomPosition);
+		pEnemyObject->SetMovingSpeed(250);
+
 		m_ppObjects.push_back(std::move(pEnemyObject));
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -374,6 +376,14 @@ void CObjectsShader::RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, C
 		if (m_ppObjects[j]) {
 			((CEnemyCharacter*)m_ppObjects[j].get())->RenderBullets(pd3dCommandList, pCamera);
 		}
+	}
+}
+
+void CObjectsShader::SetPlayer(CCharacter* pTarget)
+{
+	CShader::SetPlayer(pTarget);
+	for (auto& object : m_ppObjects) {
+		((CEnemyCharacter*)object.get())->SetTarget(pTarget);
 	}
 }
 

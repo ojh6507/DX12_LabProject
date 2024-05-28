@@ -48,18 +48,22 @@ void CCharacter::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 		Move(xmf3Shift, bUpdateVelocity);
 	}
 }
+void CCharacter::LookAt(const XMFLOAT3& xmf3LookAt, const XMFLOAT3& xmf3Up)
+{
+	XMFLOAT4X4 xmf4x4View = Matrix4x4::LookAtLH(m_xmf3Position, xmf3LookAt, xmf3Up);
+	m_xmf3Right = Vector3::Normalize(XMFLOAT3(xmf4x4View._11, xmf4x4View._21, xmf4x4View._31));
+	m_xmf3Up = Vector3::Normalize(XMFLOAT3(xmf4x4View._12, xmf4x4View._22, xmf4x4View._32));
+	m_xmf3Look = Vector3::Normalize(XMFLOAT3(xmf4x4View._13, xmf4x4View._23, xmf4x4View._33));
+}
 void CCharacter::Move(const XMFLOAT3& xmf3Shift, bool bUpdateVelocity)
 {
 	//bUpdateVelocity가 참이면 플레이어를 이동하지 않고 속도 벡터를 변경한다. 
 	if (bUpdateVelocity) {
-		//플레이어의 속도 벡터를 xmf3Shift 벡터만큼 변경한다. 
 		m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, xmf3Shift);
 	}
 	else
 	{
-		//플레이어를 현재 위치 벡터에서 xmf3Shift 벡터만큼 이동한다. 
 		m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Shift);
-		//플레이어의 위치가 변경되었으므로 카메라의 위치도 xmf3Shift 벡터만큼 이동한다.
 		if (m_pCamera) m_pCamera->Move(xmf3Shift);
 	}
 }
@@ -434,8 +438,7 @@ void CEnemyCharacter::FireBullet(CGameObject* pLockedObject)
 	*/
 
 	CBulletObject* pBulletObject = NULL;
-	for (int i = 0; i < BULLETS; i++)
-	{
+	for (int i = 0; i < BULLETS; i++) {
 		if (!m_ppBullets[i]->m_bActive) {
 			pBulletObject = m_ppBullets[i];
 			break;
@@ -474,14 +477,82 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 
 	}
 	else {
-		for (int i = 0; i < BULLETS; i++) {
-			if (m_ppBullets[i]->m_bActive) m_ppBullets[i]->Animate(fElapsedTime);
+		
+		const float fieldOfView = 180.f;
+		const float followDistance = 250.f;
+		const float targetAvoidanceRadius = 40.f;
+		const float avoidanceRadius = 2.f;
+		const float separationFactor = 0.4f; // 회피 벡터의 가중치
+		const float deadZone = 50.0f;
+
+		// 타겟 방향 및 거리 계산
+		XMFLOAT3 targetDirection = Vector3::Subtract(m_target->GetPosition(), GetPosition());
+		float targetDistance = Vector3::Length(targetDirection);
+		targetDirection = Vector3::Normalize(targetDirection);
+		// 타겟 회피 벡터 계산
+		XMFLOAT3 targetAvoidanceVector = XMFLOAT3(0, 0, 0);
+		if (targetDistance < targetAvoidanceRadius) {
+			targetAvoidanceVector = Vector3::Normalize(Vector3::Subtract(GetPosition(), m_target->GetPosition()));
+			targetAvoidanceVector = Vector3::ScalarProduct(targetAvoidanceVector, 1 / targetDistance);
 		}
+
+		
+		XMFLOAT3 finalDirection = Vector3::Add(targetDirection, Vector3::ScalarProduct(targetAvoidanceVector, separationFactor));
+		finalDirection = Vector3::Normalize(finalDirection);
+
+		// 이동 및 회전 로직 적용
+		if (targetDistance < followDistance - deadZone) {
+			LookAt(m_target->GetPosition(), GetLook());
+		}
+		else if (targetDistance < followDistance + deadZone) {
+			float speedFactor = (targetDistance - (followDistance - deadZone)) / (deadZone + 1);
+			float adjustedSpeed = m_fMovingSpeed * speedFactor * fElapsedTime;
+
+			XMFLOAT3 shift = Vector3::ScalarProduct(finalDirection, adjustedSpeed);
+			SetMovingDirection(finalDirection);
+			LookAt(m_target->GetPosition(), GetLook());
+			Move(shift, false); // bUpdateVelocity를 false로 설정하여 이동을 수행
+		}
+		else {
+			//random patrol
+			m_TimeSinceLastDirectionChange += fElapsedTime;
+
+			if (m_TimeSinceLastDirectionChange >= m_ChangeDirectionInterval) {
+				m_RandomDirection = XMFLOAT3(rand() / float(RAND_MAX) * 2.0f - 1.0f,
+					rand() / float(RAND_MAX) * 2.0f - 1.0f,
+					rand() / float(RAND_MAX) * 2.0f - 1.0f);
+				m_RandomDirection = Vector3::Normalize(m_RandomDirection);
+				m_TimeSinceLastDirectionChange = 0.0f;
+			}
+			XMFLOAT3 shift = XMFLOAT3(m_RandomDirection.x * m_fMovingSpeed * fElapsedTime,
+				m_RandomDirection.y * m_fMovingSpeed * fElapsedTime,
+				m_RandomDirection.z * m_fMovingSpeed * fElapsedTime);
+
+			XMFLOAT3 newpos = XMFLOAT3(m_xmf4x4World._41 + shift.x,
+										m_xmf4x4World._42 + shift.y,
+										m_xmf4x4World._43 + shift.z);
+
+			if (!XMVector3Equal(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&newpos))) {
+				LookAt(newpos, GetLook());
+			}
+			SetMovingDirection(m_RandomDirection);
+			Move(shift, false); // bUpdateVelocity를 false로 설정하여 이동을 수행
+			
+		}
+
+		XMFLOAT3 actorDirection = Vector3::Normalize(GetLook());
+		float angle = acos(Vector3::DotProduct(actorDirection, finalDirection));
+		float angleDegrees = angle * (180.0f / XM_PI);
+		// 총알 발사 로직
+		m_fTimeSinceLastBarrage += fElapsedTime;
+		if (targetDistance < 300.f && angleDegrees <= 160.f && m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
+			FireBullet(nullptr);
+			m_fTimeSinceLastBarrage = 0;
+		}
+	
 	}
-	m_fTimeSinceLastBarrage += fElapsedTime;
-	if (m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
-		FireBullet();
-		m_fTimeSinceLastBarrage = 0;
+	for (int i = 0; i < BULLETS; i++) {
+		if (m_ppBullets[i]->m_bActive) m_ppBullets[i]->Animate(fElapsedTime);
 	}
 
 }
