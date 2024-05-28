@@ -20,6 +20,10 @@
 #include <string>
 #include <stack>
 #include <vector>
+#include <memory>
+///////////////////////////
+#include <random>
+//////////////////////////
 #include <wrl.h>	
 #include <shellapi.h>
 

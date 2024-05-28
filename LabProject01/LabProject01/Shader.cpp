@@ -161,7 +161,7 @@ void CShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
 
 
 /////
-D3D12_INPUT_LAYOUT_DESC CPlayerShader::CreateInputLayout()
+D3D12_INPUT_LAYOUT_DESC CCharacterShader::CreateInputLayout()
 {
 	UINT nInputElementDescs = 2;
 	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs = new
@@ -175,31 +175,31 @@ D3D12_INPUT_LAYOUT_DESC CPlayerShader::CreateInputLayout()
 	d3dInputLayoutDesc.NumElements = nInputElementDescs;
 	return(d3dInputLayoutDesc);
 }
-D3D12_SHADER_BYTECODE CPlayerShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
+D3D12_SHADER_BYTECODE CCharacterShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSPlayer", "vs_5_1",
 		ppd3dShaderBlob));
 }
-D3D12_SHADER_BYTECODE CPlayerShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
+D3D12_SHADER_BYTECODE CCharacterShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSPlayer", "ps_5_1", ppd3dShaderBlob));
 }
 
-void CPlayerShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
+void CCharacterShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
 	m_nPipelineStates = 1;
 	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
 	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 
 }
-void CPlayerShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+void CCharacterShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	UINT ncbElementBytes = ((sizeof(CB_PLAYER_INFO) + 255) & ~255); //256의 배수
 	m_pd3dcbPlayer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL,
 		ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
 	m_pd3dcbPlayer->Map(0, NULL, (void**)&m_pcbMappedPlayer);
 }
-void CPlayerShader::ReleaseShaderVariables()
+void CCharacterShader::ReleaseShaderVariables()
 {
 	if (m_pd3dcbPlayer)
 	{
@@ -207,13 +207,13 @@ void CPlayerShader::ReleaseShaderVariables()
 		m_pd3dcbPlayer->Release();
 	}
 }
-void CPlayerShader::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
+void CCharacterShader::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
 {
 	XMFLOAT4X4 xmf4x4World;
 	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(pxmf4x4World)));
 	::memcpy(&m_pcbMappedPlayer->m_xmf4x4World, &xmf4x4World, sizeof(XMFLOAT4X4));
 }
-void CPlayerShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+void CCharacterShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
 	D3D12_GPU_VIRTUAL_ADDRESS d3dGpuVirtualAddress = m_pd3dcbPlayer->GetGPUVirtualAddress();
@@ -250,7 +250,7 @@ void CObjectsShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12Graph
 {
 	UINT ncbGameObjectBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 	m_pd3dcbGameObjects = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL,
-		ncbGameObjectBytes * m_nObjects, D3D12_HEAP_TYPE_UPLOAD,
+		ncbGameObjectBytes * m_ppObjects.size(), D3D12_HEAP_TYPE_UPLOAD,
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
 	m_pd3dcbGameObjects->Map(0, NULL, (void**)&m_pcbMappedGameObjects);
 }
@@ -259,7 +259,7 @@ void CObjectsShader::UpdateShaderVariables(ID3D12GraphicsCommandList *pd3dComman
 {
 	UINT ncbGameObjectBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 	XMFLOAT4X4 xmf4x4World;
-	for (int j = 0; j < m_nObjects; j++) {
+	for (int j = 0; j < m_ppObjects.size(); j++) {
 		XMStoreFloat4x4(&xmf4x4World,
 			XMMatrixTranspose(XMLoadFloat4x4(&m_ppObjects[j]->m_xmf4x4World)));
 		CB_GAMEOBJECT_INFO* pbMappedcbGameObject = (CB_GAMEOBJECT_INFO*)(m_pcbMappedGameObjects + (j * ncbGameObjectBytes));
@@ -277,47 +277,47 @@ void CObjectsShader::ReleaseShaderVariables()
 }
 
 
-void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList * pd3dCommandList)
+void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList * pd3dCommandList, 
+								  ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
-	CCubeMeshIlluminated* pCubeMesh = new CCubeMeshIlluminated(pd3dDevice,
-		pd3dCommandList, 12.0f, 12.0f, 12.0f);
-	int xObjects = 10, yObjects = 10, zObjects = 10, i = 0;
-	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
-	m_ppObjects = new CGameObject * [m_nObjects];
+	CAirplaneMeshDiffused* pPlaneMesh = new CAirplaneMeshDiffused(pd3dDevice, pd3dCommandList);
+	int xObjects = 200;
 	float fxPitch = 12.0f * 2.5f;
 	float fyPitch = 12.0f * 2.5f;
 	float fzPitch = 12.0f * 2.5f;
-	CRotatingObject* pRotatingObject = NULL;
-	for (int x = -xObjects; x <= xObjects; x++) {
-		for (int y = -yObjects; y <= yObjects; y++) {
-			for (int z = -zObjects; z <= zObjects; z++) {
-				pRotatingObject = new CRotatingObject();
-				pRotatingObject->SetMaterial(i % MAX_MATERIALS);
-				pRotatingObject->SetMesh(pCubeMesh);
-				pRotatingObject->SetPosition(fxPitch * x, fyPitch * y, fzPitch * z);
-				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-				pRotatingObject->SetRotationSpeed(10.0f * (i % 10));
-				m_ppObjects[i++] = pRotatingObject;
-			}
-		}
+
+	std::default_random_engine generator; // 랜덤 숫자 생성기
+	std::uniform_real_distribution<float> distribution(-800.f, 800.f); // -50.0f에서 50.0f 사이의 분포를 가집니다.
+
+
+	std::unique_ptr<CEnemyCharacter> pEnemyObject;
+	for (int x = 0; x < xObjects; x++) {
+		pEnemyObject = std::make_unique<CEnemyCharacter>(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+		pEnemyObject->SetMaterial(m_ppObjects.size() % MAX_MATERIALS);
+		pEnemyObject->SetMesh(pPlaneMesh);
+		
+		XMFLOAT3 randomPosition;
+		randomPosition.x = distribution(generator);
+		randomPosition.y = 20.0f; // Y 위치는 고정
+		randomPosition.z = distribution(generator);
+
+		pEnemyObject->SetPosition(randomPosition);
+		m_ppObjects.push_back(std::move(pEnemyObject));
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CObjectsShader::ReleaseObjects()
 {
-	if (m_ppObjects) {
-		for (int j = 0; j < m_nObjects; j++) {
-			if (m_ppObjects[j]) delete m_ppObjects[j];
-		}
-		delete[] m_ppObjects;
+	if (!m_ppObjects.empty()) {
+		m_ppObjects.clear();
 	}
 }
 
 void CObjectsShader::AnimateObjects(float fTimeElapsed)
 {
-	for (int j = 0; j < m_nObjects; j++) {
-		m_ppObjects[j]->Animate(fTimeElapsed);
+	for (auto& object: m_ppObjects) {
+		object->Animate(fTimeElapsed);
 	}
 }
 
@@ -327,12 +327,12 @@ CGameObject* CObjectsShader::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosit
 	*pfNearHitDistance = FLT_MAX;
 	float fHitDistance = FLT_MAX;
 	CGameObject* pSelectedObject = nullptr;
-	for (int j = 0; j < m_nObjects; j++) {
-		nIntersected = m_ppObjects[j]->PickObjectByRayIntersection(xmf3PickPosition,
+	for (const auto& object : m_ppObjects) {
+		nIntersected = object->PickObjectByRayIntersection(xmf3PickPosition,
 			xmf4x4View, &fHitDistance);
 		if ((nIntersected > 0) && (fHitDistance < *pfNearHitDistance)) {
 			*pfNearHitDistance = fHitDistance;
-			pSelectedObject = m_ppObjects[j];
+			pSelectedObject = object.get();
 		}
 	}
 	return(pSelectedObject);
@@ -340,8 +340,10 @@ CGameObject* CObjectsShader::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosit
 
 void CObjectsShader::ReleaseUploadBuffers()
 {
-	if (m_ppObjects) {
-		for (int j = 0; j < m_nObjects; j++) m_ppObjects[j]->ReleaseUploadBuffers();
+	if (!m_ppObjects.empty()) {
+		for (const auto& object : m_ppObjects) {
+			object->ReleaseUploadBuffers();
+		}
 	}
 }
 void CObjectsShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
@@ -353,21 +355,27 @@ void CObjectsShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature*
 void CObjectsShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
-	UpdateShaderVariables(pd3dCommandList);
 	UINT ncbGameObjectBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255);
+	UpdateShaderVariables(pd3dCommandList);
 	D3D12_GPU_VIRTUAL_ADDRESS d3dcbGameObjectGpuVirtualAddress =
 		m_pd3dcbGameObjects->GetGPUVirtualAddress();
-	for (int j = 0; j < m_nObjects; j++)
-	{
-		if (m_ppObjects[j])
-		{
+	for (int j = 0; j < m_ppObjects.size(); j++) {
+		if (m_ppObjects[j]) {
 			pd3dCommandList->SetGraphicsRootConstantBufferView(2,
 				d3dcbGameObjectGpuVirtualAddress + (ncbGameObjectBytes * j));
 			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
 }
-
+void CObjectsShader::RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	CShader::Render(pd3dCommandList, pCamera);
+	for (int j = 0; j < m_ppObjects.size(); j++) {
+		if (m_ppObjects[j]) {
+			((CEnemyCharacter*)m_ppObjects[j].get())->RenderBullets(pd3dCommandList, pCamera);
+		}
+	}
+}
 
 D3D12_INPUT_LAYOUT_DESC CDiffusedShader::CreateInputLayout()
 {
@@ -400,4 +408,9 @@ void CDiffusedShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature
 	m_nPipelineStates = 1;
 	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
 	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+}
+
+void CDiffusedShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	CShader::Render(pd3dCommandList, pCamera);
 }

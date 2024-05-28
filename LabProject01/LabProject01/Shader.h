@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "GameObject.h"
+#include "Player.h"
 #include "Camera.h"
 //게임 객체의 정보를 셰이더에게 넘겨주기 위한 구조체(상수 버퍼)이다. 
 struct CB_GAMEOBJECT_INFO
@@ -49,11 +50,11 @@ protected:
 	UINT8* m_pcbMappedGameObjects = NULL;
 };
 
-class CPlayerShader : public CShader
+class CCharacterShader : public CShader
 {
 public:
-	CPlayerShader() {};
-	virtual ~CPlayerShader() {};
+	CCharacterShader() {};
+	virtual ~CCharacterShader() {};
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
 	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
 	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
@@ -74,7 +75,8 @@ protected:
 class CObjectsShader : public CShader
 {
 public:
-	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, 
+							ID3D12RootSignature* pd3dGraphicsRootSignature);
 	virtual void AnimateObjects(float fTimeElapsed);
 	virtual CGameObject* PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance);
 
@@ -90,9 +92,10 @@ public:
 	
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+	void RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+
 protected:
-	CGameObject** m_ppObjects = nullptr;
-	int m_nObjects = 0;
+	std::vector<std::unique_ptr<CGameObject>> m_ppObjects;
 };
 
 class CDiffusedShader : public CShader
@@ -102,4 +105,6 @@ public:
 	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
 	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
 	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+
 };

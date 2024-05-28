@@ -59,7 +59,7 @@ protected:
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = nullptr;
 
 public:
-	CPlayer* m_pPlayer = NULL;
+	CCharacter* m_pPlayer = NULL;
 protected:
 	//æ¿¿« ¡∂∏Ì
 	LIGHTS* m_pLights = NULL;
@@ -98,7 +98,7 @@ protected:
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = nullptr;
 
 public:
-	CPlayer* m_pPlayer = NULL;
+	CCharacter* m_pPlayer = NULL;
 protected:
 	//æ¿¿« ¡∂∏Ì
 	LIGHTS* m_pLights = NULL;

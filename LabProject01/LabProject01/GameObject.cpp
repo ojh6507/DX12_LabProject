@@ -81,6 +81,7 @@ void CGameObject::Animate(float fTimeElapsed)
 {
 	if (m_fMovingSpeed != 0.0f) Move(m_xmf3MovingDirection, m_fMovingSpeed * fTimeElapsed);
 	UpdateBoundingBox();
+
 }
 void CGameObject::OnPrepareRender()
 {
@@ -275,7 +276,6 @@ void CBulletObject::Animate(float fElapsedTime)
 #endif
 
 	CGameObject::Animate(fElapsedTime);
-
 	if ((m_fMovingDistance > m_fBulletEffectiveRange) || (m_fElapsedTimeAfterFire > m_fLockingTime)) Reset();
 }
 
@@ -287,7 +287,6 @@ void CBulletObject::SetFirePosition(XMFLOAT3 xmf3FirePosition)
 
 void CBulletObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
-	UpdateShaderVariables(pd3dCommandList);
 	CGameObject::Render(pd3dCommandList, pCamera);
 }
 

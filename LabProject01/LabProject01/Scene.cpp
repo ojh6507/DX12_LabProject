@@ -78,7 +78,7 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	m_nShaders = 1;
 	m_pShaders = new CObjectsShader[m_nShaders];
 	m_pShaders[0].CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	m_pShaders[0].BuildObjects(pd3dDevice, pd3dCommandList);
+	m_pShaders[0].BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	BuildLightsAndMaterials();
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -226,6 +226,7 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
 	pd3dCommandList->SetGraphicsRootConstantBufferView(3, d3dcbMaterialsGpuVirtualAddress);
 	for (int i = 0; i < m_nShaders; i++) {
 		m_pShaders[i].Render(pd3dCommandList, pCamera);
+		m_pShaders[i].RenderBullets(pd3dCommandList, pCamera);
 	}
 }
 

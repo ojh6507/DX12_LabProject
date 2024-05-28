@@ -434,10 +434,10 @@ void CGameFramework::ProcessInput()
 }
 
 
-void CGameFramework::AnimateObjects() {
+void CGameFramework::AnimateObjects() 
+{
 	if (m_pPlayer) ((CAirplanePlayer* )m_pPlayer)->Animate(m_GameTimer.GetTimeElapsed());
 	if (m_pScene) m_pScene->AnimateObjects(m_GameTimer.GetTimeElapsed());
-
 }
 
 void CGameFramework::WaitForGpuComplete() 
@@ -487,6 +487,7 @@ void CGameFramework::FrameAdvance()
 #endif
 	//3인칭 카메라일 때 플레이어를 렌더링한다. 
 	if (m_pPlayer) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
+	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	d3dResourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;

@@ -9,7 +9,7 @@
 #include "GameObject.h"
 #include "Camera.h"
 
-class CPlayer : public CGameObject
+class CCharacter : public CGameObject
 {
 protected:
 	//플레이어의 위치 벡터, x-축(Right), y-축(Up), z-축(Look) 벡터이다. 
@@ -39,14 +39,14 @@ protected:
 	CCamera *m_pCamera = nullptr;
 
 	bool m_bBlowingUp{};
-	std::vector<CBulletObject*>m_ppBullets;
 	float m_fElapsedTimes = 0.0f;
 	float m_fDuration = 3.5f;
 	float m_fExplosionSpeed = 10.0f;
 	float m_fExplosionRotation = 720.0f;
 public:
-	CPlayer();
-	virtual ~CPlayer();
+	CCharacter();
+	virtual ~CCharacter();
+	
 	XMFLOAT3 GetPosition() { return(m_xmf3Position); }
 	XMFLOAT3 GetLookVector() { return(m_xmf3Look); }
 	XMFLOAT3 GetUpVector() { return(m_xmf3Up); }
@@ -93,18 +93,45 @@ public:
 	}
 	//플레이어의 위치와 회전축으로부터 월드 변환 행렬을 생성하는 함수이다. 
 	virtual void OnPrepareRender();
-	//플레이어의 카메라가 3인칭 카메라일 때 플레이어(메쉬)를 렌더링한다. 
+	virtual void Animate(float fTimeElapsed);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = nullptr);
+
 };
 
-class CAirplanePlayer : public CPlayer
+
+
+class CAirplanePlayer : public CCharacter
 {
 public:
 	CAirplanePlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
 	virtual ~CAirplanePlayer();
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
-	virtual void FireBullet(CGameObject* pLockedObject = nullptr);
 	virtual void OnPrepareRender();
 	virtual void Animate(float fElapsedTime);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = nullptr);
+	void InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList,
+		ID3D12RootSignature* pd3dGraphicsRootSignature);
+	void FireBullet(CGameObject* pLockedObject = nullptr);
+private:
+	std::vector<CBulletObject*>m_ppBullets;
+
+};
+
+class CEnemyCharacter : public CCharacter
+{
+public:
+	CEnemyCharacter(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
+	virtual ~CEnemyCharacter();
+	virtual void OnPrepareRender();
+	virtual void Animate(float fElapsedTime);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = nullptr);
+	void RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = nullptr);
+	void InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList,
+		ID3D12RootSignature* pd3dGraphicsRootSignature);
+	void FireBullet(CGameObject* pLockedObject = nullptr); 
+private:
+	std::vector<CBulletObject*>m_ppBullets;
+	float m_fBulletFireDelay{0.4f};
+	float m_fTimeSinceLastBarrage{};
+
 };

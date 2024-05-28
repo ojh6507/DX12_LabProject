@@ -8,7 +8,7 @@
 
 #define ASPECT_RATIO (float(FRAME_BUFFER_WIDTH)/float(FRAME_BUFFER_HEIGHT))
 
-class CPlayer;
+class CCharacter;
 
 struct VS_CB_CAMERA_INFO {
 
@@ -51,7 +51,7 @@ protected:
 
 	//카메라를 가지고 있는 플레이어에 대한 포인터이다.
 
-	CPlayer* m_pPlayer = NULL;
+	CCharacter* m_pPlayer = NULL;
 
 
 	//뷰포트와 씨저 사각형
@@ -83,8 +83,8 @@ public:
 	void SetViewport(int xTopLeft, int yTopLeft, int nWidth, int nHeight, float fMinz = 0.0f, float fMax = 1.0f);
 	void SetScissorRect(LONG xLeft, LONG yTop, LONG xRight, LONG yBottom);
 
-	void SetPlayer(CPlayer* pPlayer) { m_pPlayer = pPlayer; }
-	CPlayer* GetPlayer() { return (m_pPlayer); }
+	void SetPlayer(CCharacter* pPlayer) { m_pPlayer = pPlayer; }
+	CCharacter* GetPlayer() { return (m_pPlayer); }
 
 	void SetMode(DWORD nMode) { m_nMode = nMode; }
 	DWORD GetMode() { return(m_nMode); }

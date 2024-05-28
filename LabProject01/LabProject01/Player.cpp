@@ -1,7 +1,7 @@
 #include "Player.h"
 #include "Shader.h"
 
-CPlayer::CPlayer()
+CCharacter::CCharacter()
 {
 	m_pCamera = nullptr;
 	m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -19,23 +19,23 @@ CPlayer::CPlayer()
 	m_pPlayerUpdatedContext = nullptr;
 	m_pCameraUpdatedContext = nullptr;
 }
-CPlayer::~CPlayer()
+CCharacter::~CCharacter()
 {
 	ReleaseShaderVariables();
 	if (m_pCamera) delete m_pCamera;
 }
 
-void CPlayer::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+void CCharacter::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	if (m_pCamera) m_pCamera->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
-void CPlayer::ReleaseShaderVariables()
+void CCharacter::ReleaseShaderVariables()
 {
 	CGameObject::ReleaseShaderVariables();
 	if (m_pCamera) m_pCamera->ReleaseShaderVariables();
 }
 
-void CPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
+void CCharacter::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 {
 	if (dwDirection) {
 		XMFLOAT3 xmf3Shift = XMFLOAT3(0, 0, 0);
@@ -48,7 +48,7 @@ void CPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 		Move(xmf3Shift, bUpdateVelocity);
 	}
 }
-void CPlayer::Move(const XMFLOAT3& xmf3Shift, bool bUpdateVelocity)
+void CCharacter::Move(const XMFLOAT3& xmf3Shift, bool bUpdateVelocity)
 {
 	//bUpdateVelocity가 참이면 플레이어를 이동하지 않고 속도 벡터를 변경한다. 
 	if (bUpdateVelocity) {
@@ -64,7 +64,7 @@ void CPlayer::Move(const XMFLOAT3& xmf3Shift, bool bUpdateVelocity)
 	}
 }
 //플레이어를 로컬 x-축, y-축, z-축을 중심으로 회전한다. 
-void CPlayer::Rotate(float x, float y, float z)
+void CCharacter::Rotate(float x, float y, float z)
 {
 	DWORD nCameraMode = m_pCamera->GetMode();
 	//1인칭 카메라 또는 3인칭 카메라의 경우 플레이어의 회전은 약간의 제약이 따른다. 
@@ -128,7 +128,7 @@ void CPlayer::Rotate(float x, float y, float z)
 	m_xmf3Up = Vector3::CrossProduct(m_xmf3Look, m_xmf3Right, true);
 }
 //이 함수는 매 프레임마다 호출된다. 플레이어의 속도 벡터에 중력과 마찰력 등을 적용한다. 
-void CPlayer::Update(float fTimeElapsed)
+void CCharacter::Update(float fTimeElapsed)
 {
 	/*플레이어의 속도 벡터를 중력 벡터와 더한다. 
 	중력 벡터에 fTimeElapsed를 곱하는 것은 중력을 시간에 비례하도록 적용한다는 의미이다.*/
@@ -169,7 +169,7 @@ void CPlayer::Update(float fTimeElapsed)
 }
 
 
-CCamera* CPlayer::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
+CCamera* CCharacter::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
 {
 	//새로운 카메라의 모드에 따라 카메라를 새로 생성한다. 
 	CCamera *pNewCamera = nullptr;
@@ -215,7 +215,7 @@ CCamera* CPlayer::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
 	return(pNewCamera);
 }
 
-void CPlayer::OnPrepareRender()
+void CCharacter::OnPrepareRender()
 {
 	m_xmf4x4World._11 = m_xmf3Right.x;
 	m_xmf4x4World._12 = m_xmf3Right.y;
@@ -230,7 +230,11 @@ void CPlayer::OnPrepareRender()
 	m_xmf4x4World._42 = m_xmf3Position.y;
 	m_xmf4x4World._43 = m_xmf3Position.z;
 }
-void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+void CCharacter::Animate(float fElapsedTime)
+{
+	
+}
+void CCharacter::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	DWORD nCameraMode = (pCamera) ? pCamera->GetMode() : 0x00;
 	//카메라 모드가 3인칭이면 플레이어 객체를 렌더링한다. 
@@ -248,41 +252,29 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
 	SetPosition(XMFLOAT3(0.0f, 0.0f, -50.0f));
 	CreateShaderVariables(pd3dDevice, pd3dCommandList); //Create Camera Shader Varibles 
-	CPlayerShader* pShader = new CPlayerShader();
+	CCharacterShader* pShader = new CCharacterShader();
 	pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 	SetShader(pShader);
 
-	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 4.0f, 1.0f);
-	CDiffusedShader* pBulletShader = new CDiffusedShader();
-	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	for (int i = 0; i < BULLETS; i++) {
-		CBulletObject* bullet = new CBulletObject();
-		bullet->SetMesh(pBulletMesh);
-		bullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-		bullet->SetRotationSpeed(360.0f);
-		bullet->SetMovingSpeed(360.0f);
-		bullet->SetActive(false);
-		bullet->SetShader(pBulletShader);
-		m_ppBullets.push_back(bullet);
-	}
+	InitBullets(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
 }
 CAirplanePlayer::~CAirplanePlayer()
 {
 }
 
+
 void CAirplanePlayer::OnPrepareRender()
 {
-	CPlayer::OnPrepareRender();
+	CCharacter::OnPrepareRender();
 	//비행기 모델을 그리기 전에 x-축으로 90도 회전한다. 
 	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(90.0f), 0.0f, 0.0f);
 	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
 }
 void CAirplanePlayer::Animate(float fElapsedTime)
 {
-	CPlayer::Animate(fElapsedTime);
 	if (m_bBlowingUp) {
-	
+
 	}
 	else {
 		for (int i = 0; i < BULLETS; i++) {
@@ -296,11 +288,29 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 		
 	}
 	else {
-		CPlayer::Render(pd3dCommandList, pCamera);
+		CCharacter::Render(pd3dCommandList, pCamera);
 		for (auto& bullet : m_ppBullets) {
-			if (bullet->m_bActive)
+			if (bullet->m_bActive){
+				bullet->UpdateShaderVariables(pd3dCommandList);
 				bullet->Render(pd3dCommandList, pCamera);
+			}
 		}
+	}
+}
+void CAirplanePlayer::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 4.0f, 1.0f);
+	CDiffusedShader* pBulletShader = new CDiffusedShader();
+	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	for (int i = 0; i < BULLETS; i++) {
+		CBulletObject* bullet = new CBulletObject();
+		bullet->SetMesh(pBulletMesh);
+		bullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+		bullet->SetRotationSpeed(360.0f);
+		bullet->SetMovingSpeed(360.0f);
+		bullet->SetActive(false);
+		bullet->SetShader(pBulletShader);
+		m_ppBullets.push_back(bullet);
 	}
 }
 /*3인칭 카메라일 때 플레이어 메쉬를 로컬 x-축을 중심으로 +90도 회전하고 렌더링한다. 
@@ -383,8 +393,7 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 		}
 	}
 
-	if (pBulletObject)
-	{
+	if (pBulletObject) {
 		XMFLOAT3 xmf3Position = GetPosition();
 		XMFLOAT3 xmf3Direction = GetUp();
 		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
@@ -397,7 +406,116 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 
 		if (pLockedObject) {
 			pBulletObject->m_pLockedObject = pLockedObject;
-		
+
+		}
+	}
+
+}
+//-------------------------------------------------------------------------------------
+
+CEnemyCharacter::CEnemyCharacter(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList,
+							   ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	InitBullets(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+}
+
+CEnemyCharacter::~CEnemyCharacter()
+{
+}
+
+void CEnemyCharacter::FireBullet(CGameObject* pLockedObject)
+{
+	/*
+		if (pLockedObject)
+		{
+			LookAt(pLockedObject->GetPosition(), XMFLOAT3(0.0f, 1.0f, 0.0f));
+			OnUpdateTransform();
+		}
+	*/
+
+	CBulletObject* pBulletObject = NULL;
+	for (int i = 0; i < BULLETS; i++)
+	{
+		if (!m_ppBullets[i]->m_bActive) {
+			pBulletObject = m_ppBullets[i];
+			break;
+		}
+	}
+
+	if (pBulletObject) {
+		XMFLOAT3 xmf3Position = GetPosition();
+		XMFLOAT3 xmf3Direction = GetUp();
+		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
+
+		pBulletObject->m_xmf4x4World = m_xmf4x4World;
+
+		pBulletObject->SetFirePosition(xmf3FirePosition);
+		pBulletObject->SetMovingDirection(xmf3Direction);
+		pBulletObject->SetActive(true);
+
+		if (pLockedObject) {
+			pBulletObject->m_pLockedObject = pLockedObject;
+
 		}
 	}
 }
+
+void CEnemyCharacter::OnPrepareRender()
+{
+	CCharacter::OnPrepareRender();
+	//비행기 모델을 그리기 전에 x-축으로 90도 회전한다. 
+	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(90.0f), 0.0f, 0.0f);
+	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
+}
+
+void CEnemyCharacter::Animate(float fElapsedTime)
+{
+	if (m_bBlowingUp) {
+
+	}
+	else {
+		for (int i = 0; i < BULLETS; i++) {
+			if (m_ppBullets[i]->m_bActive) m_ppBullets[i]->Animate(fElapsedTime);
+		}
+	}
+	m_fTimeSinceLastBarrage += fElapsedTime;
+	if (m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
+		FireBullet();
+		m_fTimeSinceLastBarrage = 0;
+	}
+
+}
+
+void CEnemyCharacter::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	OnPrepareRender();
+	CGameObject::Render(pd3dCommandList, pCamera);
+}
+
+void CEnemyCharacter::RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	for (auto& bullet : m_ppBullets) {
+		if (bullet->m_bActive) {
+			bullet->UpdateShaderVariables(pd3dCommandList);
+			bullet->Render(pd3dCommandList, pCamera);
+		}
+	}
+}
+
+void CEnemyCharacter::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 4.0f, 1.0f);
+	CDiffusedShader* pBulletShader = new CDiffusedShader();
+	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	for (int i = 0; i < BULLETS; i++) {
+		CBulletObject* bullet = new CBulletObject();
+		bullet->SetMesh(pBulletMesh);
+		bullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+		bullet->SetRotationSpeed(360.0f);
+		bullet->SetMovingSpeed(360.0f);
+		bullet->SetActive(false);
+		bullet->SetShader(pBulletShader);
+		m_ppBullets.push_back(bullet);
+	}
+}
+

@@ -64,7 +64,7 @@ private:
 	CGameObject* m_pSelectedObject = nullptr;
 public:
 	CCamera* m_pCamera = nullptr;
-	CPlayer* m_pPlayer = nullptr;
+	CCharacter* m_pPlayer = nullptr;
 	POINT m_ptOldCursorPos;
 public:
 	CGameFramework();
