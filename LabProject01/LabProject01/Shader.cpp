@@ -280,7 +280,7 @@ void CObjectsShader::ReleaseShaderVariables()
 void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList * pd3dCommandList, 
 								  ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
-	CAirplaneMeshDiffused* pPlaneMesh = new CAirplaneMeshDiffused(pd3dDevice, pd3dCommandList);
+	CModelMesh* pPlaneMesh = new CModelMesh(pd3dDevice, pd3dCommandList, "Models/Meshes/FlyerPlayership.bin");
 	int xObjects = 200;
 	float fxPitch = 12.0f * 2.5f;
 	float fyPitch = 12.0f * 2.5f;
@@ -371,7 +371,7 @@ void CObjectsShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera*
 }
 void CObjectsShader::RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
-	CShader::Render(pd3dCommandList, pCamera);
+	//CShader::Render(pd3dCommandList, pCamera);
 	for (int j = 0; j < m_ppObjects.size(); j++) {
 		if (m_ppObjects[j]) {
 			((CEnemyCharacter*)m_ppObjects[j].get())->RenderBullets(pd3dCommandList, pCamera);

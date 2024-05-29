@@ -61,7 +61,7 @@ void CGameObject::ReleaseUploadBuffers()
 }
 bool CGameObject::IsVisible(CCamera* pCamera)
 {
-	OnPrepareRender();
+	//OnPrepareRender();
 	bool bIsVisible = false;
 	BoundingOrientedBox xmBoundingBox = m_pMesh->GetBoundingBox();
 	//모델 좌표계의 바운딩 박스를 월드 좌표계로 변환한다.
@@ -267,8 +267,6 @@ void CBulletObject::Animate(float fElapsedTime)
 	xmf3Position = Vector3::Add(xmf3Position, xmf3Movement);
 	SetPosition(xmf3Position);
 #else
-	XMMATRIX xmRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(m_fRotationSpeed * fElapsedTime), XMConvertToRadians(0.0f));
-	XMStoreFloat4x4(&m_xmf4x4World, xmRotate * XMLoadFloat4x4(&m_xmf4x4World));
 	XMFLOAT3 xmf3Position = GetPosition();
 	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&m_xmf3MovingDirection) * fDistance));
 	m_xmf4x4World._41 = xmf3Position.x; m_xmf4x4World._42 = xmf3Position.y; m_xmf4x4World._43 = xmf3Position.z;

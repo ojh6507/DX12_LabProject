@@ -133,11 +133,12 @@ public:
 	void FireBullet(CGameObject* pLockedObject = nullptr); 
 private:
 	std::vector<CBulletObject*>m_ppBullets;
-	float m_fBulletFireDelay{0.4f};
+	float m_fBulletFireDelay{3.f};
 	float m_fTimeSinceLastBarrage{};
 	XMFLOAT3 m_RandomDirection{};
 	float m_ChangeDirectionInterval{ 5.f };
 	float m_TimeSinceLastDirectionChange{ 5.f };
+	float m_timeSinceLastRotation{};
 
 
 };

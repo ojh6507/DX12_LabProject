@@ -73,6 +73,16 @@ extern ID3D12Resource* CreateBufferResource(ID3D12Device* pd3dDevice, ID3D12Grap
                                             ID3D12Resource** ppd3dUploadBuffer = nullptr);
 
 
+inline int ReadUnityBinaryString(FILE* pFile, char* pstrToken, BYTE* pnStrLength)
+{
+    UINT nReads = 0;
+    nReads = (UINT)::fread(pnStrLength, sizeof(BYTE), 1, pFile);
+    nReads = (UINT)::fread(pstrToken, sizeof(char), *pnStrLength, pFile);
+    pstrToken[*pnStrLength] = '\0';
+
+    return(nReads);
+}
+
 
 //3차원 벡터의 연산
 namespace Vector3

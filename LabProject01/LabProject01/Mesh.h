@@ -62,7 +62,11 @@ private:
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
-	void ReleaseUploadBuffers();
+	virtual void ReleaseUploadBuffers();
+public:
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
+	int CheckRayIntersection(XMFLOAT3& xmRayPosition, XMFLOAT3& xmRayDirection, float* pfNearHitDistance);
 protected:
 	ID3D12Resource* m_pd3dIndexBuffer = nullptr;
 	ID3D12Resource* m_pd3dIndexUploadBuffer = nullptr;
@@ -90,17 +94,7 @@ protected:
 	UINT m_nOffset = 0;
 	//모델 좌표계의 OOBB 바운딩 박스이다. 
 	BoundingOrientedBox m_xmBoundingBox;
-public:
-	int CheckRayIntersection(XMFLOAT3& xmRayPosition, XMFLOAT3& xmRayDirection, float* pfNearHitDistance);
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
-	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
-};
 
-class CTriangleMesh : public CMesh
-{
-public:
-	CTriangleMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-	virtual ~CTriangleMesh() { }
 };
 
 class CCubeMeshDiffused : public CMesh
@@ -151,4 +145,55 @@ public:
 	CCubeMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, 
 						float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
 	virtual ~CCubeMeshIlluminated();
+};
+
+
+class CModelMesh : public CMesh
+{
+public:
+	CModelMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const char* pstrFileName = NULL);
+	virtual ~CModelMesh();
+
+private:
+	int								m_nReferences = 0;
+
+public:
+	
+	virtual void ReleaseUploadBuffers() override;
+
+protected:
+	XMFLOAT3* m_pxmf3Positions = NULL;
+	ID3D12Resource* m_pd3dPositionBuffer = NULL;
+	ID3D12Resource* m_pd3dPositionUploadBuffer = NULL;
+
+	XMFLOAT3* m_pxmf3Normals = NULL;
+	ID3D12Resource* m_pd3dNormalBuffer = NULL;
+	ID3D12Resource* m_pd3dNormalUploadBuffer = NULL;
+
+	XMFLOAT2* m_pxmf2TextureCoords = NULL;
+	ID3D12Resource* m_pd3dTextureCoordBuffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoordUploadBuffer = NULL;
+
+	ID3D12Resource* m_pd3dIndexBuffer = NULL;
+	ID3D12Resource* m_pd3dIndexUploadBuffer = NULL;
+
+	UINT							m_nVertexBufferViews = 0;
+	D3D12_VERTEX_BUFFER_VIEW* m_pd3dVertexBufferViews = NULL;
+
+	D3D12_INDEX_BUFFER_VIEW			m_d3dIndexBufferView;
+
+	D3D12_PRIMITIVE_TOPOLOGY		m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	UINT							m_nSlot = 0;
+	UINT							m_nStride = 0;
+	UINT							m_nOffset = 0;
+
+	UINT							m_nStartIndex = 0;
+	int								m_nBaseVertex = 0;
+
+	BoundingBox						m_xmBoundingBox;
+
+public:
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+
+	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const char* pstrFileName);
 };

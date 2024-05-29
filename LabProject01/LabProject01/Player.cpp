@@ -250,8 +250,8 @@ void CCharacter::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCa
 CAirplanePlayer::CAirplanePlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 	* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
-	CAirplaneMeshDiffused* pAirplaneMesh = new CAirplaneMeshDiffused(pd3dDevice,
-		pd3dCommandList, 20.0f, 20.0f, 4.0f, XMFLOAT4(0.0f, 0.5f, 0.0f, 0.0f));
+	CModelMesh* pAirplaneMesh = new CModelMesh(pd3dDevice, pd3dCommandList, "Models/Meshes/FlyerPlayership.bin");
+
 	SetMesh(pAirplaneMesh);
 	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
 	SetPosition(XMFLOAT3(0.0f, 0.0f, -50.0f));
@@ -271,9 +271,7 @@ CAirplanePlayer::~CAirplanePlayer()
 void CAirplanePlayer::OnPrepareRender()
 {
 	CCharacter::OnPrepareRender();
-	//비행기 모델을 그리기 전에 x-축으로 90도 회전한다. 
-	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(90.0f), 0.0f, 0.0f);
-	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
+
 }
 void CAirplanePlayer::Animate(float fElapsedTime)
 {
@@ -303,7 +301,7 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 }
 void CAirplanePlayer::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
-	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 4.0f, 1.0f);
+	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.f, 1.0f, 4.0f);
 	CDiffusedShader* pBulletShader = new CDiffusedShader();
 	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	for (int i = 0; i < BULLETS; i++) {
@@ -399,7 +397,7 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 
 	if (pBulletObject) {
 		XMFLOAT3 xmf3Position = GetPosition();
-		XMFLOAT3 xmf3Direction = GetUp();
+		XMFLOAT3 xmf3Direction = GetLook();
 		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
 
 		pBulletObject->m_xmf4x4World = m_xmf4x4World;
@@ -447,7 +445,7 @@ void CEnemyCharacter::FireBullet(CGameObject* pLockedObject)
 
 	if (pBulletObject) {
 		XMFLOAT3 xmf3Position = GetPosition();
-		XMFLOAT3 xmf3Direction = GetUp();
+		XMFLOAT3 xmf3Direction = GetLook();
 		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
 
 		pBulletObject->m_xmf4x4World = m_xmf4x4World;
@@ -466,9 +464,6 @@ void CEnemyCharacter::FireBullet(CGameObject* pLockedObject)
 void CEnemyCharacter::OnPrepareRender()
 {
 	CCharacter::OnPrepareRender();
-	//비행기 모델을 그리기 전에 x-축으로 90도 회전한다. 
-	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(90.0f), 0.0f, 0.0f);
-	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
 }
 
 void CEnemyCharacter::Animate(float fElapsedTime)
@@ -477,18 +472,20 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 
 	}
 	else {
-		
+		const float targetFrameTime = 1.0f / 60.0f; // 60 FPS 기준 프레임 시간
+		const float interpolationFactor = 0.1f; // 보간 계수
 		const float fieldOfView = 180.f;
-		const float followDistance = 250.f;
+		const float followDistance = 100.f;
 		const float targetAvoidanceRadius = 40.f;
 		const float avoidanceRadius = 2.f;
-		const float separationFactor = 0.4f; // 회피 벡터의 가중치
-		const float deadZone = 50.0f;
+		const float separationFactor = 1.4f; // 회피 벡터의 가중치
+		const float deadZone = 20.0f;
 
 		// 타겟 방향 및 거리 계산
 		XMFLOAT3 targetDirection = Vector3::Subtract(m_target->GetPosition(), GetPosition());
 		float targetDistance = Vector3::Length(targetDirection);
 		targetDirection = Vector3::Normalize(targetDirection);
+
 		// 타겟 회피 벡터 계산
 		XMFLOAT3 targetAvoidanceVector = XMFLOAT3(0, 0, 0);
 		if (targetDistance < targetAvoidanceRadius) {
@@ -496,25 +493,39 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 			targetAvoidanceVector = Vector3::ScalarProduct(targetAvoidanceVector, 1 / targetDistance);
 		}
 
-		
 		XMFLOAT3 finalDirection = Vector3::Add(targetDirection, Vector3::ScalarProduct(targetAvoidanceVector, separationFactor));
 		finalDirection = Vector3::Normalize(finalDirection);
 
+		// 현재 방향을 쿼터니언으로 변환
+		XMVECTOR currentLook = XMLoadFloat3(&m_xmf3Look);
+		XMVECTOR currentQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), currentLook, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+
+		// 목표 방향을 쿼터니언으로 변환
+		XMVECTOR targetQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&finalDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+
+		// SLERP를 사용하여 현재 방향과 목표 방향 사이를 보간
+		XMVECTOR newQuat = XMQuaternionSlerp(currentQuat, targetQuat, interpolationFactor);
+
+		// 보간된 쿼터니언을 행렬로 변환하여 방향 설정
+		XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(newQuat);
+		XMFLOAT3 newLook;
+		XMStoreFloat3(&newLook, XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotationMatrix));
+
 		// 이동 및 회전 로직 적용
 		if (targetDistance < followDistance - deadZone) {
-			LookAt(m_target->GetPosition(), GetLook());
+			LookAt(m_target->GetPosition(), newLook); // LookAt 함수가 내부적으로 월드 변환 행렬을 업데이트함
 		}
 		else if (targetDistance < followDistance + deadZone) {
 			float speedFactor = (targetDistance - (followDistance - deadZone)) / (deadZone + 1);
-			float adjustedSpeed = m_fMovingSpeed * speedFactor * fElapsedTime;
+			float adjustedSpeed = m_fMovingSpeed * speedFactor * targetFrameTime;
 
 			XMFLOAT3 shift = Vector3::ScalarProduct(finalDirection, adjustedSpeed);
 			SetMovingDirection(finalDirection);
-			LookAt(m_target->GetPosition(), GetLook());
-			Move(shift, false); // bUpdateVelocity를 false로 설정하여 이동을 수행
+			LookAt(m_target->GetPosition(), newLook); // LookAt 함수가 내부적으로 월드 변환 행렬을 업데이트함
+			Move(shift, false);
 		}
 		else {
-			//random patrol
+			// Random patrol logic
 			m_TimeSinceLastDirectionChange += fElapsedTime;
 
 			if (m_TimeSinceLastDirectionChange >= m_ChangeDirectionInterval) {
@@ -524,33 +535,36 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 				m_RandomDirection = Vector3::Normalize(m_RandomDirection);
 				m_TimeSinceLastDirectionChange = 0.0f;
 			}
-			XMFLOAT3 shift = XMFLOAT3(m_RandomDirection.x * m_fMovingSpeed * fElapsedTime,
-				m_RandomDirection.y * m_fMovingSpeed * fElapsedTime,
-				m_RandomDirection.z * m_fMovingSpeed * fElapsedTime);
+			XMFLOAT3 shift = XMFLOAT3(m_RandomDirection.x * m_fMovingSpeed * targetFrameTime,
+				m_RandomDirection.y * m_fMovingSpeed * targetFrameTime,
+				m_RandomDirection.z * m_fMovingSpeed * targetFrameTime);
 
 			XMFLOAT3 newpos = XMFLOAT3(m_xmf4x4World._41 + shift.x,
-										m_xmf4x4World._42 + shift.y,
-										m_xmf4x4World._43 + shift.z);
+				m_xmf4x4World._42 + shift.y,
+				m_xmf4x4World._43 + shift.z);
 
 			if (!XMVector3Equal(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&newpos))) {
-				LookAt(newpos, GetLook());
+				LookAt(newpos, newLook); // LookAt 함수가 내부적으로 월드 변환 행렬을 업데이트함
 			}
 			SetMovingDirection(m_RandomDirection);
-			Move(shift, false); // bUpdateVelocity를 false로 설정하여 이동을 수행
-			
+			Move(shift, false);
 		}
-
+		// 회전 각도 계산 및 디버깅 출력
 		XMFLOAT3 actorDirection = Vector3::Normalize(GetLook());
 		float angle = acos(Vector3::DotProduct(actorDirection, finalDirection));
 		float angleDegrees = angle * (180.0f / XM_PI);
+
+
 		// 총알 발사 로직
 		m_fTimeSinceLastBarrage += fElapsedTime;
 		if (targetDistance < 300.f && angleDegrees <= 160.f && m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
 			FireBullet(nullptr);
 			m_fTimeSinceLastBarrage = 0;
 		}
-	
+
 	}
+
+
 	for (int i = 0; i < BULLETS; i++) {
 		if (m_ppBullets[i]->m_bActive) m_ppBullets[i]->Animate(fElapsedTime);
 	}
@@ -575,7 +589,7 @@ void CEnemyCharacter::RenderBullets(ID3D12GraphicsCommandList* pd3dCommandList, 
 
 void CEnemyCharacter::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
-	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 4.0f, 1.0f);
+	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.0f, 1.0f, 4.0f);
 	CDiffusedShader* pBulletShader = new CDiffusedShader();
 	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	for (int i = 0; i < BULLETS; i++) {
