@@ -2,7 +2,7 @@
 #include "Timer.h"
 #include "Scene.h"
 #include "Camera.h"
-
+#include "Player.h"
 
 class CGameFramework {
 private:
@@ -61,9 +61,11 @@ private:
 	UINT64 m_nFenceValues[m_nSwapChainBuffers]{};
 	//씬을 그리기 위한 멤버변수
 	CScene* m_pScene;
+	CGameObject* m_pSelectedObject = nullptr;
 public:
-	CCamera* m_pCamera = NULL;
-
+	CCamera* m_pCamera = nullptr;
+	CCharacter* m_pPlayer = nullptr;
+	POINT m_ptOldCursorPos;
 public:
 	CGameFramework();
 	
@@ -93,12 +95,11 @@ public:
 	void WaitForGpuComplete();
 	//CPU 와 GPU를 동기화하는 함수이다.
 
-	//05장 따라하기 추가 changeSwapChainState()
 	void ChangeSwapChainState();
 	//06장 따라하기 추가
 	void MoveToNextFrame();
 	void OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	void OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM  lParam);
+	void ProcessSelectedObject(DWORD dwDirection, float cxDelta, float cyDelta);
 	LRESULT CALLBACK OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
-
 };

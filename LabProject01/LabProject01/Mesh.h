@@ -31,6 +31,26 @@ public:
 	~CDiffusedVertex() { }
 };
 
+class CIlluminatedVertex : public CVertex
+{
+protected:
+	XMFLOAT3 m_xmf3Normal;
+public:
+	CIlluminatedVertex() {
+		m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); 
+		m_xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	}
+	CIlluminatedVertex(float x, float y, float z, XMFLOAT3 xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f)) {
+		m_xmf3Position = XMFLOAT3(x, y, z); 
+		m_xmf3Normal = xmf3Normal;
+	}
+	CIlluminatedVertex(XMFLOAT3 xmf3Position, XMFLOAT3 xmf3Normal = XMFLOAT3(0.0f, 0.0f, 0.0f)) {
+		m_xmf3Position = xmf3Position; 
+		m_xmf3Normal = xmf3Normal;
+	}
+	~CIlluminatedVertex() { }
+};
+
 class CMesh
 {
 public:
@@ -38,13 +58,21 @@ public:
 	virtual ~CMesh();
 private:
 	int m_nReferences = 0;
+	//정점을 픽킹을 위하여 저장한다(정점 버퍼를 Map()하여 읽지 않아도 되도록).
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
-	void ReleaseUploadBuffers();
+	virtual void ReleaseUploadBuffers();
+public:
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
+	int CheckRayIntersection(XMFLOAT3& xmRayPosition, XMFLOAT3& xmRayDirection, float* pfNearHitDistance);
 protected:
-	ID3D12Resource* m_pd3dIndexBuffer = NULL;
-	ID3D12Resource* m_pd3dIndexUploadBuffer = NULL;
+	ID3D12Resource* m_pd3dIndexBuffer = nullptr;
+	ID3D12Resource* m_pd3dIndexUploadBuffer = nullptr;
+	CDiffusedVertex* m_pVertices = nullptr;
+	//메쉬의 인덱스를 저장한다(인덱스 버퍼를 Map()하여 읽지 않아도 되도록).
+	UINT* m_pnIndices = nullptr;
 	
 	/*인덱스 버퍼(인덱스의 배열)와 인덱스 버퍼를 위한 업로드 버퍼에 대한 인터페이스 포인터이다. 
 	인덱스 버퍼는 정점 버퍼(배열)에 대한 인덱스를 가진다.*/
@@ -64,18 +92,9 @@ protected:
 	UINT m_nVertices = 0;
 	UINT m_nStride = 0;
 	UINT m_nOffset = 0;
-public:
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList); 
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nInstances);
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nInstances, 
-						D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
-};
+	//모델 좌표계의 OOBB 바운딩 박스이다. 
+	BoundingOrientedBox m_xmBoundingBox;
 
-class CTriangleMesh : public CMesh
-{
-public:
-	CTriangleMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-	virtual ~CTriangleMesh() { }
 };
 
 class CCubeMeshDiffused : public CMesh
@@ -85,4 +104,96 @@ public:
 	CCubeMeshDiffused(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList
 	*pd3dCommandList, float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
 	virtual ~CCubeMeshDiffused() {};
+};
+
+class CAirplaneMeshDiffused : public CMesh
+{
+public:
+	CAirplaneMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
+		* pd3dCommandList, float fWidth = 20.0f, float fHeight = 20.0f, float fDepth = 4.0f,
+		XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f));
+	virtual ~CAirplaneMeshDiffused();
+};
+
+class CSphereMeshDiffused : public CMesh
+{
+public:
+	CSphereMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
+		* pd3dCommandList, float fRadius = 2.0f, int nSlices = 20, int nStacks = 20);
+	virtual ~CSphereMeshDiffused();
+};
+
+
+class CMeshIlluminated : public CMesh
+{
+public:
+	CMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual ~CMeshIlluminated();
+public:
+	void CalculateTriangleListVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, int nVertices);
+	void CalculateTriangleListVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, 
+											UINT nVertices, UINT* pnIndices, UINT nIndices);
+	void CalculateTriangleStripVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions,
+											 UINT nVertices, UINT* pnIndices, UINT nIndices);
+	void CalculateVertexNormals(XMFLOAT3* pxmf3Normals, XMFLOAT3* pxmf3Positions, 
+								int nVertices, UINT* pnIndices, int nIndices);
+};
+
+class CCubeMeshIlluminated : public CMeshIlluminated
+{
+public:
+	CCubeMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, 
+						float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
+	virtual ~CCubeMeshIlluminated();
+};
+
+
+class CModelMesh : public CMesh
+{
+public:
+	CModelMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const char* pstrFileName = NULL);
+	virtual ~CModelMesh();
+
+private:
+	int								m_nReferences = 0;
+
+public:
+	
+	virtual void ReleaseUploadBuffers() override;
+
+protected:
+	XMFLOAT3* m_pxmf3Positions = NULL;
+	ID3D12Resource* m_pd3dPositionBuffer = NULL;
+	ID3D12Resource* m_pd3dPositionUploadBuffer = NULL;
+
+	XMFLOAT3* m_pxmf3Normals = NULL;
+	ID3D12Resource* m_pd3dNormalBuffer = NULL;
+	ID3D12Resource* m_pd3dNormalUploadBuffer = NULL;
+
+	XMFLOAT2* m_pxmf2TextureCoords = NULL;
+	ID3D12Resource* m_pd3dTextureCoordBuffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoordUploadBuffer = NULL;
+
+	ID3D12Resource* m_pd3dIndexBuffer = NULL;
+	ID3D12Resource* m_pd3dIndexUploadBuffer = NULL;
+
+	UINT							m_nVertexBufferViews = 0;
+	D3D12_VERTEX_BUFFER_VIEW* m_pd3dVertexBufferViews = NULL;
+
+	D3D12_INDEX_BUFFER_VIEW			m_d3dIndexBufferView;
+
+	D3D12_PRIMITIVE_TOPOLOGY		m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	UINT							m_nSlot = 0;
+	UINT							m_nStride = 0;
+	UINT							m_nOffset = 0;
+
+	UINT							m_nStartIndex = 0;
+	int								m_nBaseVertex = 0;
+
+	BoundingBox						m_xmBoundingBox;
+
+public:
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+
+	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const char* pstrFileName);
 };
