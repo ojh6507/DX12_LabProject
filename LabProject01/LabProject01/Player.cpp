@@ -262,9 +262,24 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	SetShader(pShader);
 
 	InitBullets(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+
+	CSphereMeshDiffused* pBarrierMesh = new CSphereMeshDiffused(pd3dDevice, pd3dCommandList, 18.f, 20.0f, 20.0f);
+	CWireFrameDiffusedShader* pBarrierShader = new CWireFrameDiffusedShader();
+	CBarrierObject* Barrier = new CBarrierObject();
+	pBarrierShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	Barrier->SetMesh(pBarrierMesh);
+	Barrier->SetShader(pBarrierShader);
+	m_pBarrier = Barrier;
 }
 CAirplanePlayer::~CAirplanePlayer()
 {
+	for (int i = 0; i < BULLETS; i++) {
+		if (m_ppBullets[i]) {
+			m_ppBullets[i]->ReleaseUploadBuffers();
+			m_ppBullets[i]->ReleaseShaderVariables();
+			m_ppBullets[i]->Destroy();
+		}
+	}
 }
 
 
@@ -279,6 +294,7 @@ void CAirplanePlayer::Animate(float fElapsedTime)
 
 	}
 	else {
+		if (!m_bBarrier) m_pBarrier->SetPosition(GetPosition());
 		for (int i = 0; i < BULLETS; i++) {
 			if (m_ppBullets[i]->m_bActive) m_ppBullets[i]->Animate(fElapsedTime);
 		}
@@ -290,7 +306,12 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 		
 	}
 	else {
+		if (!m_bBarrier) {
+			m_pBarrier->UpdateShaderVariables(pd3dCommandList);
+			m_pBarrier->Render(pd3dCommandList, pCamera);
+		}
 		CCharacter::Render(pd3dCommandList, pCamera);
+		
 		for (auto& bullet : m_ppBullets) {
 			if (bullet->m_bActive){
 				bullet->UpdateShaderVariables(pd3dCommandList);
@@ -302,6 +323,7 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 void CAirplanePlayer::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
 	CCubeMeshIlluminated* pBulletMesh = new CCubeMeshIlluminated(pd3dDevice, pd3dCommandList, 1.f, 1.0f, 4.0f);
+															
 	CDiffusedShader* pBulletShader = new CDiffusedShader();
 	pBulletShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	for (int i = 0; i < BULLETS; i++) {
@@ -314,6 +336,8 @@ void CAirplanePlayer::InitBullets(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 		bullet->SetShader(pBulletShader);
 		m_ppBullets.push_back(bullet);
 	}
+	
+
 }
 /*3인칭 카메라일 때 플레이어 메쉬를 로컬 x-축을 중심으로 +90도 회전하고 렌더링한다. 
 왜냐하면 비행기 모델 메쉬는 다음 그림과 같이 y-축 방향이 비행기의 앞쪽이 되도록 모델링이 되었기 때문이다. 
@@ -395,6 +419,7 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 		}
 	}
 
+	CCharacter::OnPrepareRender();
 	if (pBulletObject) {
 		XMFLOAT3 xmf3Position = GetPosition();
 		XMFLOAT3 xmf3Direction = GetLook();
@@ -413,6 +438,7 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 	}
 
 }
+
 //-------------------------------------------------------------------------------------
 
 CEnemyCharacter::CEnemyCharacter(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList,
@@ -423,6 +449,13 @@ CEnemyCharacter::CEnemyCharacter(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 
 CEnemyCharacter::~CEnemyCharacter()
 {
+	for (int i = 0; i < BULLETS; i++) {
+		if (m_ppBullets[i]) {
+			m_ppBullets[i]->ReleaseUploadBuffers();
+			m_ppBullets[i]->ReleaseShaderVariables();
+			m_ppBullets[i]->Destroy();
+		}
+	}
 }
 
 void CEnemyCharacter::FireBullet(CGameObject* pLockedObject)
@@ -475,7 +508,7 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 		const float targetFrameTime = 1.0f / 60.0f; // 60 FPS 기준 프레임 시간
 		const float interpolationFactor = 0.1f; // 보간 계수
 		const float fieldOfView = 180.f;
-		const float followDistance = 100.f;
+		const float followDistance = 120.f;
 		const float targetAvoidanceRadius = 40.f;
 		const float avoidanceRadius = 2.f;
 		const float separationFactor = 1.4f; // 회피 벡터의 가중치
@@ -558,7 +591,7 @@ void CEnemyCharacter::Animate(float fElapsedTime)
 		// 총알 발사 로직
 		m_fTimeSinceLastBarrage += fElapsedTime;
 		if (targetDistance < 300.f && angleDegrees <= 160.f && m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
-			FireBullet(nullptr);
+			FireBullet();
 			m_fTimeSinceLastBarrage = 0;
 		}
 

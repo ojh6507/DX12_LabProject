@@ -12,11 +12,11 @@ private:
 	int m_nWndClientWidth{};
 	int m_nWndClientHeight{};
 
-	IDXGIFactory4* m_pdxgiFactory{};
+	ComPtr <IDXGIFactory4> m_pdxgiFactory{};
 	//DXGI 팩토리 인터페이스에 대한 포인터
-	IDXGISwapChain3* m_pdxgiswapChain{};
+	ComPtr<IDXGISwapChain3> m_pdxgiswapChain{};
 	//스왑 체인 인터페이스에 대한 포인터 이다. 주로 디스플레이를 제어하기 위하여 필요하다.
-	ID3D12Device* m_pd3dDevice{};
+	ComPtr<ID3D12Device>  m_pd3dDevice{};
 	//Direct3D 디바이스 인터페이스에 대한 포인터이다. 주로 리소스를 생성하기 위해 필요하다.
 
 	bool m_bMsaa4xEnable{};
@@ -29,23 +29,22 @@ private:
 	//현재 스왑 체인의 후면 버퍼 인덱스이다.
 
 	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBuffers]{};
-	ID3D12DescriptorHeap* m_pd3dRtvDescriptorHeap{};
+	ComPtr <ID3D12DescriptorHeap> m_pd3dRtvDescriptorHeap{};
 	UINT m_nRtvDescriptorIncrementSize{};
 	//렌더 타겟 버퍼, 서술자 힙 인터페이스 포인터, 렌더 타겟 서술자 원소의 크기이다.
 
-	ID3D12Resource* m_pd3dDepthStencilBuffer{};
-	ID3D12DescriptorHeap* m_pd3dDsvDescriptorHeap{};
+	ComPtr <ID3D12Resource> m_pd3dDepthStencilBuffer{};
+	ComPtr <ID3D12DescriptorHeap> m_pd3dDsvDescriptorHeap{};
 	UINT m_nDsvDescriptorIncrementSize{};
 	//깊이-스텐실 버퍼, 서술자 힙 인터페이스 포인터, 깊이-스텐실 서술자 원소의 크기이다. 
-	ID3D12CommandQueue* m_pd3dCommandQueue{};
-	ID3D12CommandAllocator* m_pd3dCommandAllocator{};
-	ID3D12GraphicsCommandList* m_pd3dCommandList{};
+	ComPtr <ID3D12CommandQueue>m_pd3dCommandQueue{};
+	ComPtr <ID3D12CommandAllocator> m_pd3dCommandAllocator{};
+	ComPtr <ID3D12GraphicsCommandList> m_pd3dCommandList{};
 	//명령 큐, 명령 할당자, 명령 리스트 인터페이스 포인터이다.
 
-	ID3D12PipelineState* m_pd3dPipelineState{};
-	//그래픽스 파이프라인 상태 객체에 대한 인터페이스 포인터이다.
 
-	ID3D12Fence* m_pd3dFence{};
+
+	ComPtr < ID3D12Fence> m_pd3dFence{};
 	//6장에 배열이 추가되면서 삭제됨
 	//UINT64 m_nFenceValue;
 
@@ -68,7 +67,7 @@ public:
 	POINT m_ptOldCursorPos;
 public:
 	CGameFramework();
-	
+	~CGameFramework();
 	bool OnCreate(HINSTANCE hInstance, HWND hMainWnd);
 	//프레임워크를 초기화하는 함수이다.(주 윈도우가 생성되면 호출된다).
 	void OnDestroy();

@@ -6,8 +6,15 @@ CGameObject::CGameObject()
 }
 CGameObject::~CGameObject()
 {
-	if (m_pMesh) m_pMesh->Release();
-	if (m_pMaterial) m_pMaterial->Release();
+
+	if (m_pMesh) {
+		m_pMesh->Release();
+		m_pMesh = nullptr;
+	}
+	if (m_pMaterial) {
+		m_pMaterial->Release();
+		m_pMaterial = nullptr;
+	}
 }
 void CGameObject::SetShader(CShader* pShader)
 {
@@ -15,7 +22,9 @@ void CGameObject::SetShader(CShader* pShader)
 		m_pMaterial = new CMaterial();
 		m_pMaterial->AddRef();
 	}
-	if (m_pMaterial) m_pMaterial->SetShader(pShader);
+	if (m_pMaterial) {
+		m_pMaterial->SetShader(pShader);
+	}
 }
 
 void CGameObject::SetMaterial(CMaterial* pMaterial)
@@ -296,4 +305,10 @@ void CBulletObject::Reset()
 	m_fRotationAngle = 0.0f;
 
 	m_bActive = false;
+}
+
+void CBulletObject::Destroy()
+{
+	if (m_pMaterial) m_pMaterial->m_pShader->Release();
+	if (m_pMesh) m_pMesh->Release();
 }

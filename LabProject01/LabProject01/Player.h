@@ -115,6 +115,8 @@ public:
 		ID3D12RootSignature* pd3dGraphicsRootSignature);
 	void FireBullet(CGameObject* pLockedObject = nullptr);
 private:
+	CBarrierObject* m_pBarrier;
+	bool m_bBarrier{};
 	std::vector<CBulletObject*>m_ppBullets;
 
 };

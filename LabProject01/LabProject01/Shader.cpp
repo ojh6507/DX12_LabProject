@@ -281,16 +281,12 @@ void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 								  ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
 	CModelMesh* pPlaneMesh = new CModelMesh(pd3dDevice, pd3dCommandList, "Models/Meshes/FlyerPlayership.bin");
-	int xObjects = 200;
-	float fxPitch = 12.0f * 2.5f;
-	float fyPitch = 12.0f * 2.5f;
-	float fzPitch = 12.0f * 2.5f;
-
+	int xObjects = 360;
+	
 	std::default_random_engine generator; // 랜덤 숫자 생성기
 	std::uniform_real_distribution<float> distribution(-800.f, 800.f); // -50.0f에서 50.0f 사이의 분포를 가집니다.
-
-
 	std::unique_ptr<CEnemyCharacter> pEnemyObject;
+
 	for (int x = 0; x < xObjects; x++) {
 		pEnemyObject = std::make_unique<CEnemyCharacter>(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
 		pEnemyObject->SetMaterial(m_ppObjects.size() % MAX_MATERIALS);
@@ -298,11 +294,11 @@ void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 		
 		XMFLOAT3 randomPosition;
 		randomPosition.x = distribution(generator);
-		randomPosition.y = 20.0f; // Y 위치는 고정
+		randomPosition.y = distribution(generator);
 		randomPosition.z = distribution(generator);
 
 		pEnemyObject->SetPosition(randomPosition);
-		pEnemyObject->SetMovingSpeed(250);
+		pEnemyObject->SetMovingSpeed(20);
 
 		m_ppObjects.push_back(std::move(pEnemyObject));
 	}
@@ -423,4 +419,29 @@ void CDiffusedShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature
 void CDiffusedShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
+}
+
+void CWireFrameDiffusedShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+}
+
+D3D12_RASTERIZER_DESC CWireFrameDiffusedShader::CreateRasterizerState()
+{
+	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
+	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
+	d3dRasterizerDesc.DepthBias = 0;
+	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
+	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	d3dRasterizerDesc.DepthClipEnable = TRUE;
+	d3dRasterizerDesc.MultisampleEnable = FALSE;
+	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
+	d3dRasterizerDesc.ForcedSampleCount = 0;
+	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	return(d3dRasterizerDesc);
 }

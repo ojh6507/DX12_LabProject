@@ -123,6 +123,7 @@ public:
 	void SetFirePosition(XMFLOAT3 xmf3FirePosition);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 	void Reset();
+	void Destroy();
 public:
 	bool m_bActive{};
 	float						m_fBulletEffectiveRange = 150.0f;
@@ -135,4 +136,16 @@ public:
 	float						m_fLockingTime = 4.0f;
 	CGameObject* m_pLockedObject = NULL;
 
+
+};
+
+
+class CBarrierObject : public CRotatingObject
+{
+public:
+	CBarrierObject() {};
+	virtual ~CBarrierObject() {};
+
+public:
+	float						m_fRotationAngle = 0.0f;
 };
