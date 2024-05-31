@@ -75,7 +75,6 @@ public:
 	//카메라 변환 행렬을 생성한다.
 	void GenerateViewMatrix();
 	void GenerateViewMatrix(XMFLOAT3 xmf3Position, XMFLOAT3 xmf3Lookat, XMFLOAT3 xmf3Up);
-	void RegenerateViewMatrix(const XMFLOAT3& playerLookDirection, const XMFLOAT3& playerUpDirection);
 	void RegenerateViewMatrix();
 
 	//투영 변환 행렬을 생성한다
@@ -157,7 +156,7 @@ class CThirdPersonCamera : public CCamera
 public:
 	CThirdPersonCamera(CCamera* pCamera);
 	virtual ~CThirdPersonCamera() { }
-	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f);
+	
 	virtual void Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed);
 	virtual void SetLookAt(XMFLOAT3& vLookAt);
 };

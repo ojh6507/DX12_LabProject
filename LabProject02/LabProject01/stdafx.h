@@ -104,6 +104,14 @@ namespace Vector3
             XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector) * fScalar);
         return(xmf3Result);
     }
+    inline XMFLOAT3 Rotate(const XMFLOAT3& vec, const XMFLOAT3& lookDir, const XMFLOAT3& upDir)
+    {
+        XMMATRIX rotationMatrix = XMMatrixLookToLH(XMLoadFloat3(&vec), XMLoadFloat3(&lookDir), XMLoadFloat3(&upDir));
+        XMVECTOR rotatedVec = XMVector3Transform(XMLoadFloat3(&vec), rotationMatrix);
+        XMFLOAT3 result;
+        XMStoreFloat3(&result, rotatedVec);
+        return result;
+    }
     inline XMFLOAT3 Add(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
     {
         XMFLOAT3 xmf3Result;
