@@ -71,9 +71,8 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 	CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	CPlayer::PrepareExplosion(pd3dDevice, pd3dCommandList);
-	BuildDefaultLightsAndMaterials();
 
-	m_nGameObjects = 200;
+	m_nGameObjects = 100 + 1;
 	m_ppGameObjects.resize(m_nGameObjects);
 	CGameObject *pApacheModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/orb.bin");
 	
@@ -83,7 +82,7 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	std::uniform_real_distribution<float> yDistribution(100, 200.f);
 	CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice,pd3dCommandList, 2.f, 2.f,2.f);
 
-	for (int x = 0; x < m_nGameObjects; x++) {
+	for (int x = 0; x < m_nGameObjects - 1; x++) {
 		CEnemyObject* pEnemyObject{};
 		pEnemyObject = new CEnemyObject();
 		pEnemyObject->SetChild(pApacheModel, true);
@@ -101,7 +100,31 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 		pEnemyObject->m_fMovingSpeed = speed(generator);
 		m_ppGameObjects[x] = pEnemyObject;
 	}
+
+	CGameObject *pUFOModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, 
+									m_pd3dGraphicsRootSignature, "Model/UFO.bin");
+	m_nBossIndex = m_nGameObjects -1;
+	CBossObject* pEnemyObject{};
+	pEnemyObject = new CBossObject();
+	pEnemyObject->SetChild(pUFOModel, true);
+	pEnemyObject->InitBullets(bulletMesh, 30);
+	pEnemyObject->InitExplosionParticle();
+	pEnemyObject->OnInitialize();
 	
+	XMFLOAT3 randomPosition;
+	randomPosition.x = distribution(generator);
+	randomPosition.y = yDistribution(generator);
+	randomPosition.z = distribution(generator);
+
+	pEnemyObject->SetPosition(randomPosition);
+	pEnemyObject->Rotate(0.0f, 90.0f, 0.0f);
+	pEnemyObject->m_fMovingSpeed = speed(generator);
+	m_ppGameObjects[m_nBossIndex] = pEnemyObject;
+	
+		
+		
+		
+	BuildDefaultLightsAndMaterials();
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
@@ -248,7 +271,8 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 		{
 		
 		case VK_CONTROL:
-			m_pPlayer->Fire();
+			if(!m_pPlayer->m_bBlowingUp)
+				m_pPlayer->Fire();
 			break;
 		default:
 			break;

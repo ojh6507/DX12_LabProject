@@ -67,8 +67,7 @@ public:
 
 	void ReleaseUploadBuffers();
 	void CheckObjectByBulletCollisions();
-	
-	bool FindClosestObjectInViewDirection();
+
 	CPlayer						*m_pPlayer = NULL;
 	CCamera* m_pCamera = nullptr;
 public:
@@ -76,6 +75,7 @@ public:
 
 	std::vector<CGameObject*>m_ppGameObjects;
 	int							m_nGameObjects = 0;
+	int							m_nBossIndex = 0;
 
 	LIGHT						*m_pLights = NULL;
 	CHeightMapTerrain			* m_pTerrain = NULL;

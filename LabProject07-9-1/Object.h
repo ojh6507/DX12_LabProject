@@ -272,3 +272,17 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	void UpdateHP(ID3D12GraphicsCommandList* pd3dCommandList);
 };
+
+class CExplosionCubeObject : public CRotatingObject
+{
+public:
+	void Reset();
+	void Move(XMFLOAT3& vDirection, float fSpeed);
+	void UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
+public:
+	
+	float						m_fRotationAngle = 0.0f;
+};
+

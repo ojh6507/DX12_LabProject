@@ -103,27 +103,3 @@ float4 PSProjection(VS_OUTPUT input) : SV_TARGET
 {
     return float4(0.0f, 1.0f, 0.0f, 1.0f);
 }
-
-
-VS_OUTPUT VSDamage(uint vertexID : SV_VertexID)
-{
-    VS_OUTPUT output;
-
-    float3 positions[4] =
-    {
-        float3(-1.0f, -1.0f, 0.0f), // Bottom-left
-        float3(1.0f, -1.0f, 0.0f), // Bottom-right
-        float3(-1.0f, 1.0f, 0.0f), // Top-left
-        float3(1.0f, 1.0f, 0.0f) // Top-right
-    };
-
-
-    output.position = float4(positions[vertexID], 1.0f);
-    return output;
-}
-
-// Pixel Shader
-float4 PSDamage(VS_OUTPUT input) : SV_TARGET
-{
-    return float4(0.0f, 1.0f, 0.0f, 1.0f);
-}

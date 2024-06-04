@@ -93,7 +93,7 @@ public:
 	virtual void InitExplosionParticle();
 public:
 	std::vector<CBulletObject*>m_ppBullets;
-	std::vector<CBulletObject*>m_exp;
+	std::vector<CExplosionCubeObject*>m_exp;
 
 protected:
 	bool m_bIsRecoiling{};
@@ -138,8 +138,8 @@ class CEnemyObject : public CPlayer
 public:
 	virtual void OnInitialize();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
-	void SetTarget(CGameObject* target) { m_target = target; }
-	void SetTerrain(CHeightMapTerrain* target) { m_pTerrain = target; }
+	virtual void SetTarget(CGameObject* target) { m_target = target; }
+	virtual void SetTerrain(CHeightMapTerrain* target) { m_pTerrain = target; }
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	virtual void Update() override;
 public:
@@ -154,6 +154,14 @@ public:
 	virtual void Fire() override;
 private:
 	CGameObject* m_target{};
+protected:
 	CHeightMapTerrain* m_pTerrain{};
 };
 
+
+
+class CBossObject :public CEnemyObject
+{
+public:
+	virtual void OnInitialize();
+};

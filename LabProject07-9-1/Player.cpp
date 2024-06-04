@@ -263,6 +263,7 @@ void CPlayer::OnPrepareRender()
 
 void CPlayer::Fire()
 {
+	if (m_bBlowingUp) return;
 	CBulletObject* pBulletObject = NULL;
 	for (int i = 0; i < m_ppBullets.size(); i++) {
 		if (!m_ppBullets[i]->m_bActive) {
@@ -330,7 +331,7 @@ void CPlayer::InitBullets(CMesh* pbullet, float speed)
 void CPlayer::InitExplosionParticle()
 {
 	for (int i = 0; i < EXPLOSION_DEBRISES; i++) {
-		CBulletObject* EXP = new CBulletObject();
+		CExplosionCubeObject* EXP = new CExplosionCubeObject();
 		EXP->SetMesh(m_pExplosionMesh);
 		EXP->SetShader(CMaterial::m_pIlluminatedShader);
 		m_exp.push_back(EXP);
@@ -403,8 +404,10 @@ void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 
 				XMStoreFloat4x4(&m_pxmf4x4Transforms[i], transformMatrix);
 			}
+
 		}
 		else {
+		
 			currentHP = fullHP;
 			m_bBlowingUp = false;
 			m_fElapsedTimes = 0.0f;
@@ -461,9 +464,15 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 {
 	if (m_bBlowingUp) {
 
+		for (int i = 0; i < EXPLOSION_DEBRISES; i++) {
+			m_exp[i]->m_xmf4x4World = m_pxmf4x4Transforms[i];
+			m_exp[i]->Render(pd3dCommandList, pCamera);
+
+		}
 	}
 	else
 	{
+
 		CPlayer::Render(pd3dCommandList, pCamera);
 		for (auto& obj : m_ppBullets) {
 			if (obj->m_bActive)obj->Render(pd3dCommandList, pCamera);
@@ -479,10 +488,10 @@ CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 	switch (nNewCameraMode)
 	{
 		case FIRST_PERSON_CAMERA:
-			SetFriction(200.5f);
+			SetFriction(130.f);
 			SetGravity(XMFLOAT3(0.0f, -50.0f, 0.0f));
 			SetMaxVelocityXZ(70.0f);
-			SetMaxVelocityY(100.0f);
+			SetMaxVelocityY(120.0f);
 			m_pCamera = OnChangeCamera(FIRST_PERSON_CAMERA, nCurrentCameraMode);
 			m_pCamera->SetTimeLag(0.0f);
 			m_pCamera->SetOffset(XMFLOAT3(-25.0f, 25.0f, -25.0f));
@@ -532,11 +541,10 @@ void CEnemyObject::OnInitialize()
 
 void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
+	CPlayer::OnPrepareRender();
 	if(m_BodyObject)
 		CGameObject::UpdateBoundingBox(m_BodyObject->m_pMesh);
 	if (m_bBlowingUp) {
-
-
 		m_fElapsedTimes += fTimeElapsed;
 		if (m_fElapsedTimes <= m_fDuration) {
 			XMFLOAT3 xmf3Position = GetPosition();
@@ -696,8 +704,9 @@ void CEnemyObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* p
 			m_exp[i]->Render(pd3dCommandList, pCamera);
 		}
 	}
-	else 
+	else {
 		CPlayer::Render(pd3dCommandList, pCamera);
+	}
 	for (auto& obj : m_ppBullets) {
 		if (obj->m_bActive)obj->Render(pd3dCommandList, pCamera);
 		
@@ -715,4 +724,9 @@ void CEnemyObject::Fire()
 {
 	if (m_bBlowingUp) return;
 	CPlayer::Fire();
+}
+
+void CBossObject::OnInitialize()
+{
+	m_BodyObject = FindFrame("default");
 }

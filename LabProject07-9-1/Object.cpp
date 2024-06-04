@@ -127,14 +127,13 @@ void CGameObject::UpdateBoundingBox(CMesh* pMesh)
 	if (!pMesh) return;
 	pMesh->bbox.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4World));
 	XMStoreFloat4(&m_xmOOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_xmOOBB.Orientation)));
-	m_xmOOBB.Extents.x *= 25;
-	m_xmOOBB.Extents.y *=25;
-	m_xmOOBB.Extents.z *= 25;
+	m_xmOOBB.Extents.x *= 28;
+	m_xmOOBB.Extents.y *= 28;
+	m_xmOOBB.Extents.z *= 28;
 }
 
 bool CGameObject::IsVisible(CCamera* pCamera)
 {
-	//OnPrepareRender();
 	bool bIsVisible = false;
 	BoundingOrientedBox xmBoundingBox;
 	xmBoundingBox.Extents = m_xmOOBB.Extents;
@@ -887,3 +886,45 @@ void HPBar::UpdateHP(ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	pd3dCommandList->SetGraphicsRoot32BitConstants(3, 1, &hpRatio, 0);
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+void CExplosionCubeObject::Move(XMFLOAT3& vDirection, float fSpeed)
+{
+	SetPosition(m_xmf4x4World._41 + vDirection.x * fSpeed, m_xmf4x4World._42 + vDirection.y * fSpeed, m_xmf4x4World._43 + vDirection.z * fSpeed);
+}
+
+
+void CExplosionCubeObject::UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	XMFLOAT4 xmf4Ambient = XMFLOAT4(0.8f, 0.f, .8f, 0.9f);
+	XMFLOAT4 xmf4Diffuse = XMFLOAT4(0.9f, 0.9f, 0.9f, 0.5f);
+	XMFLOAT4 xmf4Specular = XMFLOAT4(0.01f, 0.01f, 0.01f, 0.9f);
+	xmf4Specular.w = (10 * 255.0f);
+	XMFLOAT4 xmf4Emissive = XMFLOAT4(0.9f, 0.f, 0.f, 0.0f);
+
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Ambient), 16);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Diffuse), 20);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Specular), 24);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Emissive), 28);
+}
+
+void CExplosionCubeObject::Animate(float fElapsedTime, XMFLOAT4X4* pxmf4x4Parent)
+{
+	CGameObject::Animate(fElapsedTime);
+}
+
+void CExplosionCubeObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	OnPrepareRender();
+
+	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
+	if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+	UpdateMaterialColor(pd3dCommandList);
+	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
