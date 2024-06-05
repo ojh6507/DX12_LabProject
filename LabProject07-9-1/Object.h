@@ -120,6 +120,8 @@ public:
     virtual ~CGameObject();
 
 public:
+
+	bool m_bBlowingUpAvailable{};
 	bool m_bBlowingUp{};
 	char							m_pstrFrameName[64];
 	XMFLOAT3 m_scale;
@@ -134,6 +136,7 @@ public:
 	CGameObject 					*m_pParent = NULL;
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
+	virtual float ActivateBlowsUp() { return 0; };
 	void UpdateBoundingBox(CMesh* pmesh =nullptr);
 	float	m_fMovingSpeed{30};
 	void SetMesh(CMesh *pMesh);
@@ -178,7 +181,9 @@ public:
 	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f);
 	void Rotate(XMFLOAT3 *pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4 *pxmf4Quaternion);
-
+	void GenerateRayForPicking(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View,
+								XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection);
+	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance) { return 0; };
 	CGameObject *GetParent() { return(m_pParent); }
 	void UpdateTransform(XMFLOAT4X4 *pxmf4x4Parent=NULL);
 	CGameObject *FindFrame(char *pstrFrameName);
@@ -226,9 +231,13 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	void SetActive(bool bactive) { m_bActive = bactive; }
+	void SetTimer(float t) {
+		delayTime = t;
+	}
 public:
 	XMFLOAT3					m_xmf3FirePosition = XMFLOAT3(0.0f, 0.0f, 1.0f);
 	XMFLOAT3					m_xmf3MovingDirection = XMFLOAT3(0.0f, 0.0f, 1.0f);
+
 	bool						m_bActive{};
 	float						m_fElapsedTimeAfterFire = 0.0f;
 	float						m_fLockingDelayTime = 0.3f;
@@ -236,6 +245,9 @@ public:
 	float						m_fBulletEffectiveRange = 200.0f;
 	float						m_fMovingDistance = 0.0f;
 	float						m_fRotationAngle = 0.0f;
+private:
+	float delayTime = -1;
+	float m_elapsedTime{};
 };
 
 

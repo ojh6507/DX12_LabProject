@@ -287,8 +287,10 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 	{
 	case WM_LBUTTONDOWN:
 	case WM_RBUTTONDOWN:
+	{
 		::SetCapture(hWnd);
 		::GetCursorPos(&m_ptOldCursorPos);
+	}
 		break;
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
@@ -322,6 +324,15 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 				case VK_F9:
 					ChangeSwapChainState();
 					break;
+				case VK_CONTROL: {
+					if (!m_pPlayer->m_bBlowingUp) {
+						int centerX = m_nWndClientWidth / 2;
+						int centerY = m_nWndClientHeight / 2;
+
+						if (m_pScene)
+							m_pScene->PickObjectPointedByCursor(centerX, centerY, m_pCamera);
+					}
+				}
 				case VK_F5:
 					break;
 				default:

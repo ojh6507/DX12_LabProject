@@ -587,3 +587,11 @@ void CCubeMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 	}
 }
 
+int CMesh::CheckRayIntersection(XMFLOAT3& xmf3RayOrigin, XMFLOAT3& xmf3RayDirection, float* pfNearHitDistance)
+{
+	XMVECTOR xmRayOrigin = XMLoadFloat3(&xmf3RayOrigin);
+	XMVECTOR xmRayDirection = XMLoadFloat3(&xmf3RayDirection);
+
+	bool bIntersected = bbox.Intersects(xmRayOrigin, xmRayDirection, *pfNearHitDistance);
+	return bIntersected;
+}

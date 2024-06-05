@@ -45,7 +45,10 @@ class CScene
 public:
     CScene();
     ~CScene();
+	void GenerateRayForPicking(CGameObject* gameObject, XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View,
+		XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection);
 
+	void PickObjectPointedByCursor(float size_x, float size_y, CCamera* pCamera);
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 

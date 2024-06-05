@@ -42,6 +42,8 @@ public:
 public:
 	CPlayer();
 	virtual ~CPlayer();
+	float m_fElapsedBlowupTimes = 0.0f;
+	float m_fDelay = 0.f;
 
 	XMFLOAT3 GetPosition() { return(m_xmf3Position); }
 	XMFLOAT3 GetLookVector() { return(m_xmf3Look); }
@@ -89,6 +91,7 @@ public:
 	virtual void Fire();
 	void Recoil();
 	void UpdateRecoil(float fTimeElapsed);
+	virtual void SetBulletResetTimer(float t){}
 	virtual void InitBullets(CMesh* pbullet, float speed);
 	virtual void InitExplosionParticle();
 public:
@@ -121,14 +124,15 @@ public:
 	CGameObject*				m_pTailRotorFrame = NULL;
 
 private:
-	virtual void OnInitialize();
-	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
+	virtual void OnInitialize() override;;
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL) override;;
 
 public:
 	virtual	void Fire() override;
-	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
-	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
-	virtual void OnPrepareRender();
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL)override;;
+	virtual void SetBulletResetTimer(float t) override;
+	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)override;;
+	virtual void OnPrepareRender() override;;
 };
 
 
@@ -138,11 +142,14 @@ class CEnemyObject : public CPlayer
 public:
 	virtual void OnInitialize();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
+	virtual float ActivateBlowsUp();
 	virtual void SetTarget(CGameObject* target) { m_target = target; }
 	virtual void SetTerrain(CHeightMapTerrain* target) { m_pTerrain = target; }
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	virtual void Update() override;
+	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance);
 public:
+
 	CGameObject* m_BodyObject;
 	float m_fBulletFireDelay{ 4.f };
 	float m_fTimeSinceLastBarrage{};

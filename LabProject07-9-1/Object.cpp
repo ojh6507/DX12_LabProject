@@ -125,22 +125,16 @@ void CGameObject::SetChild(CGameObject* pChild, bool bReferenceUpdate)
 void CGameObject::UpdateBoundingBox(CMesh* pMesh)
 {
 	if (!pMesh) return;
-	pMesh->bbox.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4World));
-	XMStoreFloat4(&m_xmOOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_xmOOBB.Orientation)));
-	m_xmOOBB.Extents.x *= 28;
-	m_xmOOBB.Extents.y *= 28;
-	m_xmOOBB.Extents.z *= 28;
+	m_xmOOBB = pMesh->bbox;	
 }
 
 bool CGameObject::IsVisible(CCamera* pCamera)
 {
 	bool bIsVisible = false;
-	BoundingOrientedBox xmBoundingBox;
-	xmBoundingBox.Extents = m_xmOOBB.Extents;
-	xmBoundingBox.Center = m_xmOOBB.Center; 
-	xmBoundingBox.Orientation = m_xmOOBB.Orientation; 
+	BoundingOrientedBox xmBoundingBox = m_xmOOBB;
+	xmBoundingBox.Transform(xmBoundingBox, XMLoadFloat4x4(&m_xmf4x4World));
 	if (pCamera) {
-		bIsVisible = pCamera->IsInFrustum(m_xmOOBB);
+		bIsVisible = pCamera->IsInFrustum(xmBoundingBox);
 	}
 	return bIsVisible;
 }
@@ -200,12 +194,9 @@ void CGameObject::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pC
 	OnPrepareRender();
 
 	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
-	if (m_nMaterials > 0)
-	{
-		for (int i = 0; i < m_nMaterials; i++)
-		{
-			if (m_ppMaterials[i])
-			{
+	if (m_nMaterials > 0) {
+		for (int i = 0; i < m_nMaterials; i++) {
+			if (m_ppMaterials[i]) {
 				if (m_ppMaterials[i]->m_pShader) m_ppMaterials[i]->m_pShader->Render(pd3dCommandList, pCamera);
 				m_ppMaterials[i]->UpdateShaderVariable(pd3dCommandList);
 			}
@@ -345,6 +336,19 @@ void CGameObject::Rotate(XMFLOAT4 *pxmf4Quaternion)
 	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
 
 	UpdateTransform(NULL);
+}
+void CGameObject::GenerateRayForPicking(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4&
+	xmf4x4View, XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection)
+{
+	XMFLOAT4X4 xmf4x4WorldView = Matrix4x4::Multiply(m_xmf4x4World, xmf4x4View);
+	XMFLOAT4X4 xmf4x4Inverse = Matrix4x4::Inverse(xmf4x4WorldView);
+	XMFLOAT3 xmf3CameraOrigin(0.0f, 0.0f, 0.0f);
+	//카메라 좌표계의 원점을 모델 좌표계로 변환한다. 
+	*pxmf3PickRayOrigin = Vector3::TransformCoord(xmf3CameraOrigin, xmf4x4Inverse);
+	//카메라 좌표계의 점(마우스 좌표를 역변환하여 구한 점)을 모델 좌표계로 변환한다. 
+	*pxmf3PickRayDirection = Vector3::TransformCoord(xmf3PickPosition, xmf4x4Inverse);
+	//광선의 방향 벡터를 구한다. 
+	*pxmf3PickRayDirection = Vector3::Normalize(Vector3::Subtract(*pxmf3PickRayDirection, *pxmf3PickRayOrigin));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -838,6 +842,15 @@ void CBulletObject::UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandLi
 
 void CBulletObject::Animate(float fElapsedTime, XMFLOAT4X4* pxmf4x4Parent)
 {
+	if (!m_bActive) return;
+	if (delayTime != -1) {
+		m_elapsedTime += fElapsedTime;
+		if (m_elapsedTime > delayTime) {
+			Reset();
+			delayTime = -1;
+			m_elapsedTime = 0;
+		}
+	}
 	m_fElapsedTimeAfterFire += fElapsedTime;
 	float fDistance = m_fMovingSpeed * fElapsedTime;
 

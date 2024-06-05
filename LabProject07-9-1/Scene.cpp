@@ -13,6 +13,7 @@ CScene::~CScene()
 {
 }
 
+
 void CScene::BuildDefaultLightsAndMaterials()
 {
 	m_nLights = 4;
@@ -72,7 +73,7 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	CPlayer::PrepareExplosion(pd3dDevice, pd3dCommandList);
 
-	m_nGameObjects = 100 + 1;
+	m_nGameObjects = 100;
 	m_ppGameObjects.resize(m_nGameObjects);
 	CGameObject *pApacheModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/orb.bin");
 	
@@ -96,19 +97,20 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 		pEnemyObject->SetPosition(randomPosition);
 		pEnemyObject->SetScale(1.5f, 1.5f, 1.5f);
-		pEnemyObject->Rotate(0.0f, 90.0f, 0.0f);
+		
 		pEnemyObject->m_fMovingSpeed = speed(generator);
 		m_ppGameObjects[x] = pEnemyObject;
 	}
 
 	CGameObject *pUFOModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, 
 									m_pd3dGraphicsRootSignature, "Model/UFO.bin");
-	m_nBossIndex = m_nGameObjects -1;
+	m_nBossIndex = m_nGameObjects - 1;
 	CBossObject* pEnemyObject{};
 	pEnemyObject = new CBossObject();
 	pEnemyObject->SetChild(pUFOModel, true);
 	pEnemyObject->InitBullets(bulletMesh, 30);
 	pEnemyObject->InitExplosionParticle();
+	pEnemyObject->SetScale(2.5f, 2.5f, 2.5f);
 	pEnemyObject->OnInitialize();
 	
 	XMFLOAT3 randomPosition;
@@ -223,10 +225,12 @@ void CScene::CheckObjectByBulletCollisions()
 {
 	std::vector<CBulletObject*> ppBullets = m_pPlayer->m_ppBullets;
 	for (auto& object : m_ppGameObjects) {
+		
 		if (object->m_bBlowingUp) continue;
+
 		std::vector<CBulletObject*> ppBullets2 = ((CEnemyObject*)object)->m_ppBullets;
 		for (int j = 0; j < ppBullets2.size(); j++) {
-
+			
 			if (ppBullets2[j]->m_bActive && m_pPlayer->m_xmOOBB.Intersects(ppBullets2[j]->m_xmOOBB)) {
 				auto bullet_pos = ppBullets2[j]->GetPosition();
 				auto TerrainHeight = m_pTerrain->GetHeight(bullet_pos.x / m_xmf3TerrainScale.x, bullet_pos.z / m_xmf3TerrainScale.z);
@@ -245,15 +249,48 @@ void CScene::CheckObjectByBulletCollisions()
 		}
 
 		for (int j = 0; j < ppBullets.size(); j++) {
-			object->Update();
+			//object->Update();
+			ppBullets2[j]->IsVisible(m_pCamera);
 			if (ppBullets[j]->m_bActive &&
 				object->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB)) {
 				CEnemyObject* pExplosiveObject = (CEnemyObject*)object;
-				pExplosiveObject->m_bBlowingUp = true;
-				ppBullets[j]->Reset();
+				//pExplosiveObject->m_bBlowingUp = true;
+				//ppBullets[j]->Reset();
 			}
 		}
 	}
+}
+
+void CScene::PickObjectPointedByCursor(float xClient, float yClient, CCamera* pCamera)
+{
+	if (!pCamera) return;
+	XMFLOAT4X4 xmf4x4View = pCamera->GetViewMatrix();
+	XMFLOAT4X4 xmf4x4Projection = pCamera->GetProjectionMatrix();
+	D3D12_VIEWPORT d3dViewport = pCamera->GetViewport();
+	XMFLOAT3 xmf3PickPosition;
+	/*화면 좌표계의 점 (xClient, yClient)를 화면 좌표 변환의 역변환과 투영 변환의 역변환을 한다. 그 결과는 카메라
+	좌표계의 점이다. 투영 평면이 카메라에서 z-축으로 거리가 1이므로 z-좌표는 1로 설정한다.*/
+	xmf3PickPosition.x = (((2.0f * xClient) / d3dViewport.Width) - 1) / xmf4x4Projection._11;
+	xmf3PickPosition.y = -(((2.0f * yClient) / d3dViewport.Height) - 1) / xmf4x4Projection._22;
+	xmf3PickPosition.z = 1.0f;
+	int nIntersected = 0;
+	float fHitDistance = FLT_MAX, fNearestHitDistance = FLT_MAX;
+	CGameObject* pNearestObject = NULL;
+	//셰이더의 모든 게임 객체들에 대한 마우스 픽킹을 수행하여 카메라와 가장 가까운 게임 객체를 구한다. 
+	for (auto& obj:m_ppGameObjects)
+	{
+		nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
+		if ((nIntersected > 0) && (fHitDistance < fNearestHitDistance))
+		{
+			fNearestHitDistance = fHitDistance;
+			pNearestObject = obj;
+		}
+	}
+	if (pNearestObject) {
+		float delayTime = pNearestObject->ActivateBlowsUp();
+		m_pPlayer->SetBulletResetTimer(delayTime);
+	}
+
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -269,10 +306,8 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 	case WM_KEYUP:
 		switch (wParam)
 		{
-		
 		case VK_CONTROL:
-			if(!m_pPlayer->m_bBlowingUp)
-				m_pPlayer->Fire();
+			m_pPlayer->Fire();
 			break;
 		default:
 			break;

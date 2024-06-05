@@ -383,9 +383,10 @@ void CAirplanePlayer::OnInitialize()
 	HandObject = FindFrame("GunWith_Mesh_FireIdleMesh1");
 }
 
-void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
+void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
 	if (m_bBlowingUp) {
+	
 		m_fElapsedTimes += fTimeElapsed;
 		if (m_fElapsedTimes <= m_fDuration) {
 			XMFLOAT3 xmf3Position = GetPosition();
@@ -481,6 +482,14 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 	}
 }
 
+void CAirplanePlayer::SetBulletResetTimer(float t)
+{
+	for (auto& obj : m_ppBullets) {
+		if (obj->m_bActive)obj -> SetTimer(t);
+
+	}
+}
+
 CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 {
 	DWORD nCurrentCameraMode = (m_pCamera) ? m_pCamera->GetMode() : 0x00;
@@ -536,15 +545,24 @@ CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 
 void CEnemyObject::OnInitialize()
 {
-	m_BodyObject =FindFrame("Sphere");
+	m_BodyObject =FindFrame("orb");
 }
 
 void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
 	CPlayer::OnPrepareRender();
+	if (m_bBlowingUpAvailable) {
+		m_fElapsedBlowupTimes += fTimeElapsed;
+		if (m_fElapsedBlowupTimes > m_fDelay) {
+			m_bBlowingUp = true;
+		}
+	}
+
 	if(m_BodyObject)
 		CGameObject::UpdateBoundingBox(m_BodyObject->m_pMesh);
 	if (m_bBlowingUp) {
+		m_fElapsedBlowupTimes = 0;
+		m_bBlowingUpAvailable = false;
 		m_fElapsedTimes += fTimeElapsed;
 		if (m_fElapsedTimes <= m_fDuration) {
 			XMFLOAT3 xmf3Position = GetPosition();
@@ -696,6 +714,15 @@ void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 
 }
 
+float CEnemyObject::ActivateBlowsUp()
+{
+	m_bBlowingUpAvailable = true;
+	auto sub_v = Vector3::Subtract(m_target->GetPosition(), GetPosition());
+	float distance = sqrt(Vector3::Length(sub_v));
+	m_fDelay = distance / 100.f;
+	return m_fDelay;
+}
+
 void CEnemyObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	if (m_bBlowingUp) {
@@ -719,6 +746,18 @@ void CEnemyObject::Update()
 		CGameObject::UpdateBoundingBox(m_BodyObject->m_pMesh);
 }
 
+int CEnemyObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance)
+{
+	if (!m_BodyObject) return 0;
+	int nIntersected = 0;
+	if (m_BodyObject->m_pMesh) {
+		XMFLOAT3 xmf3PickRayOrigin, xmf3PickRayDirection;
+		GenerateRayForPicking(xmf3PickPosition, xmf4x4View, &xmf3PickRayOrigin, &xmf3PickRayDirection);
+		nIntersected = m_BodyObject-> m_pMesh->CheckRayIntersection(xmf3PickRayOrigin, xmf3PickRayDirection, pfNearHitDistance);		
+	}
+	return(nIntersected);
+}
+
 
 void CEnemyObject::Fire()
 {
@@ -728,5 +767,5 @@ void CEnemyObject::Fire()
 
 void CBossObject::OnInitialize()
 {
-	m_BodyObject = FindFrame("default");
+	m_BodyObject = FindFrame("UFO");
 }

@@ -19,8 +19,8 @@ public:
 	void Release() { if (--m_nReferences <= 0) delete this; }
 
 	virtual void ReleaseUploadBuffers() { }
-	BoundingOrientedBox bbox;
-
+	BoundingOrientedBox bbox = BoundingOrientedBox();
+	int CheckRayIntersection(XMFLOAT3& xmf3RayOrigin, XMFLOAT3& xmf3RayDirection, float* pfNearHitDistance);
 protected:
 	D3D12_PRIMITIVE_TOPOLOGY		m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	UINT							m_nSlot = 0;
