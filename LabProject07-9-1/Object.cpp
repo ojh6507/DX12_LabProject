@@ -845,7 +845,7 @@ void CBulletObject::Animate(float fElapsedTime, XMFLOAT4X4* pxmf4x4Parent)
 	if (!m_bActive) return;
 	if (delayTime != -1) {
 		m_elapsedTime += fElapsedTime;
-		if (m_elapsedTime > delayTime) {
+		if (m_elapsedTime >= delayTime) {
 			Reset();
 			delayTime = -1;
 			m_elapsedTime = 0;
