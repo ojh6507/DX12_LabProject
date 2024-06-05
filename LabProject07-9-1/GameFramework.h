@@ -78,7 +78,9 @@ private:
 
 	CGameTimer					m_GameTimer;
 
-	CScene						*m_pScene = NULL;
+	CBaseScene					*m_pMainScene = NULL;
+	CBaseScene					*m_pCurrentScene = NULL;
+	SceneManager				*m_pSceneManager = NULL;
 	CPlayer						*m_pPlayer = NULL;
 	CCamera						*m_pCamera = NULL;
 	XMFLOAT3					m_xmf3TerrainScale;

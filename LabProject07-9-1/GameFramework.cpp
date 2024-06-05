@@ -31,7 +31,7 @@ CGameFramework::CGameFramework()
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
 
-	m_pScene = NULL;
+	m_pMainScene = NULL;
 	m_pPlayer = NULL;
 
 	_tcscpy_s(m_pszFrameRate, _T("LabProject ("));
@@ -282,7 +282,7 @@ void CGameFramework::ChangeSwapChainState()
 
 void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
+	CBaseScene* current_Scene = m_pSceneManager->GetCurrentScene();
 	switch (nMessageID)
 	{
 	case WM_LBUTTONDOWN:
@@ -290,6 +290,14 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 	{
 		::SetCapture(hWnd);
 		::GetCursorPos(&m_ptOldCursorPos);
+		if (current_Scene && current_Scene->GetType() == MAIN_MENU) {
+			auto m_pLockedObject = current_Scene->PickObjectPointedByCursor(LOWORD(lParam), HIWORD(lParam), m_pCamera);
+			if (m_pLockedObject) {
+				// 버튼 클릭 처리
+				m_pScene = new CScene(m_pPlayer);
+				m_pSceneManager->PushScene(m_pScene);  // 예: 게임 씬으로 전환
+			}
+		}
 	}
 		break;
 	case WM_LBUTTONUP:
@@ -305,7 +313,7 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 
 void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
+	if (m_pMainScene) m_pMainScene->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
 		case WM_KEYUP:
@@ -329,8 +337,8 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 						int centerX = m_nWndClientWidth / 2;
 						int centerY = m_nWndClientHeight / 2;
 
-						if (m_pScene)
-							m_pScene->PickObjectPointedByCursor(centerX, centerY, m_pCamera);
+						if (m_pMainScene)
+							m_pMainScene->PickObjectPointedByCursor(centerX, centerY, m_pCamera);
 					}
 				}
 				case VK_F5:
@@ -408,8 +416,8 @@ void CGameFramework::BuildObjects()
 {
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	m_pScene = new CScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	m_pMainScene = new CMainMenu();
+	
 	m_pCrosshair = new CCrosshair();
 	
 	CMesh* m = new Crosshair(m_pd3dDevice, m_pd3dCommandList);
@@ -421,29 +429,29 @@ void CGameFramework::BuildObjects()
 	m_pHPBar->SetMesh(m);
 	m_pHPBar->SetShader(CMaterial::m_pHpBarShader);
 */
-	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature());
+	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pMainScene->GetGraphicsRootSignature());
 	pAirplanePlayer->SetPosition(XMFLOAT3(1000.0f, 400.0f, 1000.0f));
-	m_pScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
-	m_pScene->m_pCamera = m_pPlayer->GetCamera();
+	m_pMainScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
+	m_pMainScene->m_pCamera = m_pPlayer->GetCamera();
 	m_pCamera = m_pPlayer->GetCamera();
 
 	m_xmf3TerrainScale = XMFLOAT3(512, 1, 512);
-	m_pScene->m_xmf3TerrainScale = m_xmf3TerrainScale;
+	m_pMainScene->m_xmf3TerrainScale = m_xmf3TerrainScale;
 	XMFLOAT4 xmf4Color(0.0f, 0.2f, 0.0f, 0.0f);
 
 	m_pTerrain = new CHeightMapTerrain(m_pd3dDevice, m_pd3dCommandList, L"Model/LargeTerrain.raw", 2048, 2048, 64, 64, m_xmf3TerrainScale, xmf4Color);
 	m_pTerrain->SetPosition(0,0,0);
-	m_pScene->m_pTerrain = m_pTerrain;
+	m_pMainScene->m_pTerrain = m_pTerrain;
 
-	m_pScene->SetEnemyTarget();
+	m_pSceneManager->PushScene(m_pMainScene, m_pd3dDevice, m_pd3dCommandList);
+
 
 	m_pd3dCommandList->Close();
 	ID3D12CommandList *ppd3dCommandLists[] = { m_pd3dCommandList };
 	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
 
 	WaitForGpuComplete();
-
-	if (m_pScene) m_pScene->ReleaseUploadBuffers();
+	if (m_pMainScene) m_pMainScene->ReleaseUploadBuffers();
 	if (m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
 	m_GameTimer.Reset();
 }
@@ -452,15 +460,15 @@ void CGameFramework::ReleaseObjects()
 {
 	if (m_pPlayer) m_pPlayer->Release();
 	
-	if (m_pScene) m_pScene->ReleaseObjects();
-	if (m_pScene) delete m_pScene;
+	if (m_pMainScene) m_pMainScene->ReleaseObjects();
+	if (m_pMainScene) delete m_pMainScene;
 }
 
 void CGameFramework::ProcessInput()
 {
 	static UCHAR pKeysBuffer[256];
 	bool bProcessedByScene = false;
-	if (GetKeyboardState(pKeysBuffer) && m_pScene) bProcessedByScene = m_pScene->ProcessInput(pKeysBuffer);
+	if (GetKeyboardState(pKeysBuffer) && m_pMainScene) bProcessedByScene = m_pMainScene->ProcessInput(pKeysBuffer);
 	if (!bProcessedByScene)
 	{
 		DWORD dwDirection = 0;
@@ -503,7 +511,7 @@ void CGameFramework::AnimateObjects()
 {
 	float fTimeElapsed = m_GameTimer.GetTimeElapsed();
 
-	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
+	if (m_pMainScene) m_pMainScene->AnimateObjects(fTimeElapsed);
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
 }
@@ -568,8 +576,8 @@ void CGameFramework::FrameAdvance()
 
 	m_pd3dCommandList->OMSetRenderTargets(1, &d3dRtvCPUDescriptorHandle, TRUE, &d3dDsvCPUDescriptorHandle);
 
-	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
-	if(m_pTerrain)	m_pTerrain->Render(m_pd3dCommandList, m_pCamera);
+	if (m_pMainScene) m_pMainScene->Render(m_pd3dCommandList, m_pCamera);
+	
 
 #ifdef _WITH_PLAYER_TOP
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);

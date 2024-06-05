@@ -314,7 +314,7 @@ void CPlayer::UpdateRecoil(float deltaTime)
 
 }
 
-void CPlayer::InitBullets(CMesh* pbullet, float speed)
+void CPlayer::InitBullets(CMesh* pbullet, float speed, float lifeTime)
 {
 	for (int i = 0; i < BULLETS; i++) {
 		CBulletObject* bullet = new CBulletObject();
@@ -322,6 +322,7 @@ void CPlayer::InitBullets(CMesh* pbullet, float speed)
 		bullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
 		bullet->SetRotationSpeed(300.0f);
 		bullet->m_fMovingSpeed = speed;
+		bullet->m_fLockingTime = lifeTime;
 		bullet->SetActive(false);
 		bullet->SetShader(CMaterial::m_pIlluminatedShader);
 		m_ppBullets.push_back(bullet);
@@ -358,13 +359,13 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 //	CGameObject *pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Apache.bin");
 	CGameObject *pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/GunWith_Mesh_FireIdleMesh1.bin");
 
-	pGameObject->Rotate(-2.0f, -15.f, 0.0f);
+	pGameObject->Rotate(-2.0f, -17.f, 0.0f);
 	pGameObject->SetScale(8.5f, 8.5f, 8.5f);
 	pGameObject->SetPosition(0.f,0.f,0.f);
 	SetChild(pGameObject, true);
-	CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice, pd3dCommandList, 8.f, 8.f, 8.f);
+	CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice, pd3dCommandList, 4.f, 4.f, 4.f);
 	OnInitialize();
-	InitBullets(bulletMesh,100.f);
+	InitBullets(bulletMesh,900.f, 0.15f);
 	InitExplosionParticle();
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -476,7 +477,7 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 
 		CPlayer::Render(pd3dCommandList, pCamera);
 		for (auto& obj : m_ppBullets) {
-			if (obj->m_bActive)obj->Render(pd3dCommandList, pCamera);
+			if (obj->m_bActive && obj->IsVisible(pCamera))obj->Render(pd3dCommandList, pCamera);
 
 		}
 	}
@@ -719,7 +720,7 @@ float CEnemyObject::ActivateBlowsUp()
 	m_bBlowingUpAvailable = true;
 	auto sub_v = Vector3::Subtract(m_target->GetPosition(), GetPosition());
 	float distance = sqrt(Vector3::Length(sub_v));
-	m_fDelay = distance / 100.f;
+	m_fDelay = distance / 90.f;
 	return m_fDelay;
 }
 

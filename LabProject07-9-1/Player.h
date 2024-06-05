@@ -92,7 +92,7 @@ public:
 	void Recoil();
 	void UpdateRecoil(float fTimeElapsed);
 	virtual void SetBulletResetTimer(float t){}
-	virtual void InitBullets(CMesh* pbullet, float speed);
+	virtual void InitBullets(CMesh* pbullet, float speed, float lifeTime=1);
 	virtual void InitExplosionParticle();
 public:
 	std::vector<CBulletObject*>m_ppBullets;
