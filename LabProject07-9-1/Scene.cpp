@@ -290,14 +290,13 @@ void CScene::ReleaseUploadBuffers()
 
 void CScene::CheckObjectByBulletCollisions()
 {
-	std::vector<CBulletObject*> ppBullets = m_pPlayer->m_ppBullets;
 	for (int i = 0; i < m_ppGameObjects.size(); i++) {
 		CGameObject* object = m_ppGameObjects[i];
 		if (object->m_bBlowingUp) continue;
 		std::vector<CBulletObject*> ppBullets2 = ((CEnemyObject*)object)->m_ppBullets;
 		for (int j = 0; j < ppBullets2.size(); j++) {
 			
-			if (ppBullets2[j]->m_bActive && m_pPlayer->m_xmOOBB.Intersects(ppBullets2[j]->m_xmOOBB)) {
+			if (ppBullets2[j]->m_bActive && m_pPlayer->xmBoundingBox.Intersects(ppBullets2[j]->xmBoundingBox)) {
 				auto bullet_pos = ppBullets2[j]->GetPosition();
 				auto TerrainHeight = m_pTerrain->GetHeight(bullet_pos.x / m_xmf3TerrainScale.x, bullet_pos.z / m_xmf3TerrainScale.z);
 

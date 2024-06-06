@@ -136,7 +136,7 @@ void CGameObject::UpdateBoundingBox(BoundingOrientedBox boundingBox)
 bool CGameObject::IsVisible(CCamera* pCamera)
 {
 	bool bIsVisible = false;
-	BoundingOrientedBox xmBoundingBox = m_xmOOBB;
+	 xmBoundingBox = m_xmOOBB;
 	xmBoundingBox.Transform(xmBoundingBox, XMLoadFloat4x4(&m_xmf4x4World));
 	if (pCamera) {
 		bIsVisible = pCamera->IsInFrustum(xmBoundingBox);

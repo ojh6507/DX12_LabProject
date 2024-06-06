@@ -127,6 +127,7 @@ public:
 	XMFLOAT3 m_scale;
 	CMesh							*m_pMesh = NULL;
 	BoundingOrientedBox				m_xmOOBB = BoundingOrientedBox();
+	BoundingOrientedBox				xmBoundingBox = BoundingOrientedBox();
 	int								m_nMaterials = 0;
 	CMaterial						**m_ppMaterials = NULL;
 
