@@ -138,6 +138,7 @@ public:
 	CGameObject 					*m_pSibling = NULL;
 	virtual float ActivateBlowsUp() { return 0; };
 	void UpdateBoundingBox(CMesh* pmesh =nullptr);
+	void UpdateBoundingBox(BoundingOrientedBox boundingBox);
 	float	m_fMovingSpeed{30};
 	void SetMesh(CMesh *pMesh);
 	bool IsVisible(CCamera* pCamera);
@@ -173,6 +174,7 @@ public:
 
 	void SetPosition(float x, float y, float z);
 	void SetPosition(XMFLOAT3 xmf3Position);
+
 	void SetScale(float x, float y, float z);
 	void MoveStrafe(float fDistance = 1.0f);
 	void MoveUp(float fDistance = 1.0f);
@@ -186,7 +188,7 @@ public:
 	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance) { return 0; };
 	CGameObject *GetParent() { return(m_pParent); }
 	void UpdateTransform(XMFLOAT4X4 *pxmf4x4Parent=NULL);
-	CGameObject *FindFrame(char *pstrFrameName);
+	CGameObject *FindFrame(const char *pstrFrameName);
 
 	UINT GetMeshType() { return((m_pMesh) ? m_pMesh->GetType() : 0); }
 	
@@ -210,12 +212,18 @@ protected:
 	XMFLOAT3					m_xmf3RotationAxis;
 	float						m_fRotationSpeed;
 
+	float m_TimeAccumulate{};
 public:
+	float m_fAmplitude{ 30.f };
+	float m_fVerticalSpeed{ 10.f };
+	float m_fBaseHeight{};
 	void SetRotationSpeed(float fRotationSpeed) { m_fRotationSpeed = fRotationSpeed; }
 	void SetRotationAxis(XMFLOAT3 xmf3RotationAxis) { m_xmf3RotationAxis = xmf3RotationAxis; }
-
+	virtual void UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
+	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance);
+	
 };
 
 class CBulletObject : public CRotatingObject
@@ -227,7 +235,7 @@ public:
 	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { 
 		m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); 
 	}
-	void UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	void SetActive(bool bactive) { m_bActive = bactive; }
@@ -248,6 +256,26 @@ public:
 private:
 	float delayTime = -1;
 	float m_elapsedTime{};
+};
+
+class CAlphabetObject : public CRotatingObject
+{
+public:
+
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
+	virtual void OnInitialize();
+	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance);
+	std::string m_name;
+private:
+	CGameObject* bodyObject;
+
+};
+
+class CButtonCubeObject : public CRotatingObject
+{
+public:
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 };
 
 
@@ -278,17 +306,9 @@ private:
 };
 
 
-class HPBar : public CGameObject {
-public:
-	float hpRatio{};
-	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
-	void UpdateHP(ID3D12GraphicsCommandList* pd3dCommandList);
-};
-
 class CExplosionCubeObject : public CRotatingObject
 {
 public:
-	void Reset();
 	void Move(XMFLOAT3& vDirection, float fSpeed);
 	void UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
@@ -297,4 +317,5 @@ public:
 	
 	float						m_fRotationAngle = 0.0f;
 };
+
 

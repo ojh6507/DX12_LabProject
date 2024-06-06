@@ -50,6 +50,7 @@ public:
 	XMFLOAT3 GetUpVector() { return(m_xmf3Up); }
 	XMFLOAT3 GetRightVector() { return(m_xmf3Right); }
 	void GetDamage();
+	void ResetOrientationVectors();
 	void SetFriction(float fFriction) { m_fFriction = fFriction; }
 	void SetGravity(const XMFLOAT3& xmf3Gravity) { m_xmf3Gravity = xmf3Gravity; }
 	void SetMaxVelocityXZ(float fMaxVelocity) { m_fMaxVelocityXZ = fMaxVelocity; }
@@ -92,11 +93,12 @@ public:
 	void Recoil();
 	void UpdateRecoil(float fTimeElapsed);
 	virtual void SetBulletResetTimer(float t){}
-	virtual void InitBullets(CMesh* pbullet, float speed);
+	virtual void InitBullets(CMesh* pbullet, float speed, float lifetime = 1.2f);
 	virtual void InitExplosionParticle();
 public:
 	std::vector<CBulletObject*>m_ppBullets;
 	std::vector<CExplosionCubeObject*>m_exp;
+	bool m_bGameEnd = false;
 
 protected:
 	bool m_bIsRecoiling{};
@@ -131,7 +133,7 @@ public:
 	virtual	void Fire() override;
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL)override;;
 	virtual void SetBulletResetTimer(float t) override;
-	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)override;;
+	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)override;
 	virtual void OnPrepareRender() override;;
 };
 
@@ -148,11 +150,13 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
 	virtual void Update() override;
 	virtual int PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance);
+	void EnemyMovement(float fTimeElapsed);
 public:
-
 	CGameObject* m_BodyObject;
 	float m_fBulletFireDelay{ 4.f };
 	float m_fTimeSinceLastBarrage{};
+	float m_heightOffset{200.f};
+	float m_heightMapOffset{0.f};
 	XMFLOAT3 m_RandomDirection{};
 	float m_ChangeDirectionInterval{ 5.f };
 	float m_TimeSinceLastDirectionChange{ 5.f };
@@ -165,10 +169,12 @@ protected:
 	CHeightMapTerrain* m_pTerrain{};
 };
 
-
-
 class CBossObject :public CEnemyObject
 {
 public:
 	virtual void OnInitialize();
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
+private:
+	bool m_bExplosionParticleRenderEnd{};
 };

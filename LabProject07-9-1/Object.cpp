@@ -128,6 +128,11 @@ void CGameObject::UpdateBoundingBox(CMesh* pMesh)
 	m_xmOOBB = pMesh->bbox;	
 }
 
+void CGameObject::UpdateBoundingBox(BoundingOrientedBox boundingBox)
+{
+	m_xmOOBB = boundingBox;
+}
+
 bool CGameObject::IsVisible(CCamera* pCamera)
 {
 	bool bIsVisible = false;
@@ -178,7 +183,7 @@ void CGameObject::Update()
 {
 }
 
-CGameObject *CGameObject::FindFrame(char *pstrFrameName)
+CGameObject *CGameObject::FindFrame(const char *pstrFrameName)
 {
 	CGameObject *pFrameObject = NULL;
 	if (!strncmp(m_pstrFrameName, pstrFrameName, strlen(pstrFrameName))) return(this);
@@ -690,6 +695,20 @@ CRotatingObject::~CRotatingObject()
 {
 }
 
+void CRotatingObject::UpdateMaterialColor(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	XMFLOAT4 xmf4Ambient = XMFLOAT4(0.8f, 0.8f, .8f, 0.1f);
+	XMFLOAT4 xmf4Diffuse = XMFLOAT4(0.9f, 0.9f, 0.9f, 0.9f);
+	XMFLOAT4 xmf4Specular = XMFLOAT4(0.1f, 0.1f, 0.01f, 0.2f);
+	xmf4Specular.w = (100 * 255.0f);
+	XMFLOAT4 xmf4Emissive = XMFLOAT4(0.01f, 0.f, 0.f, 0.1f);
+
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Ambient), 16);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Diffuse), 20);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Specular), 24);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(xmf4Emissive), 28);
+}
+
 void CRotatingObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 {
 	CGameObject::Rotate(&m_xmf3RotationAxis, m_fRotationSpeed * fTimeElapsed);
@@ -699,7 +718,26 @@ void CRotatingObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 
 void CRotatingObject::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
 {
-	CGameObject::Render(pd3dCommandList, pCamera);
+	OnPrepareRender();
+	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
+	if (!m_ppMaterials) return;
+	if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+	UpdateMaterialColor(pd3dCommandList);
+	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
+}
+
+int CRotatingObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance)
+{
+	if (!m_pMesh) return 0;
+	int nIntersected = 0;
+
+	XMFLOAT3 xmf3PickRayOrigin, xmf3PickRayDirection;
+	GenerateRayForPicking(xmf3PickPosition, xmf4x4View, &xmf3PickRayOrigin, &xmf3PickRayDirection);
+	nIntersected = m_pMesh->CheckRayIntersection(xmf3PickRayOrigin, xmf3PickRayDirection, pfNearHitDistance);
+
+	return(nIntersected);
+
+
 }
 
 void CCrosshair::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
@@ -860,7 +898,6 @@ void CBulletObject::Animate(float fElapsedTime, XMFLOAT4X4* pxmf4x4Parent)
 	m_xmf4x4World._31 = m_xmf3MovingDirection.x;
 	m_xmf4x4World._32 = m_xmf3MovingDirection.y;
 	m_xmf4x4World._33 = m_xmf3MovingDirection.z;
-	UpdateBoundingBox(m_pMesh);
 	m_fMovingDistance += fDistance;
 	CGameObject::Animate(fElapsedTime);
 	MoveForward(m_fMovingDistance);
@@ -871,33 +908,12 @@ void CBulletObject::Animate(float fElapsedTime, XMFLOAT4X4* pxmf4x4Parent)
 void CBulletObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	OnPrepareRender();
-
-	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
-	if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
-	UpdateMaterialColor(pd3dCommandList);
-	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
-
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-
-void HPBar::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
-{
-	if (m_nMaterials > 0) {
-		for (int i = 0; i < m_nMaterials; i++) {
-			if (m_ppMaterials[i]){
-				if (m_ppMaterials[i]->m_pShader) m_ppMaterials[i]->m_pShader->Render(pd3dCommandList, pCamera);
-			}
-
-			if (m_pMesh) m_pMesh->Render(pd3dCommandList, i);
-		}
+	if (IsVisible(pCamera)) {
+		UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
+		if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+		UpdateMaterialColor(pd3dCommandList);
+		if (m_pMesh) m_pMesh->Render(pd3dCommandList);
 	}
-}
-
-void HPBar::UpdateHP(ID3D12GraphicsCommandList* pd3dCommandList)
-{
-	pd3dCommandList->SetGraphicsRoot32BitConstants(3, 1, &hpRatio, 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -941,3 +957,57 @@ void CExplosionCubeObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CC
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+
+void CAlphabetObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	CGameObject::Render(pd3dCommandList, pCamera);
+}
+
+void CAlphabetObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	CRotatingObject::Animate(fTimeElapsed, pxmf4x4Parent);
+
+	m_TimeAccumulate += fTimeElapsed;
+
+	float fNewHeight = m_fBaseHeight + m_fAmplitude * sinf(m_fVerticalSpeed * m_TimeAccumulate);
+
+	XMFLOAT3 xmf3Position = GetPosition();
+
+	SetPosition(XMFLOAT3(xmf3Position.x, fNewHeight, xmf3Position.z));
+}
+
+void CAlphabetObject::OnInitialize()
+{
+	bodyObject = FindFrame(m_name.c_str());
+	UpdateBoundingBox(bodyObject->m_pMesh);
+}
+
+int CAlphabetObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance)
+{
+	if (!m_pChild) return 0;
+	int nIntersected = 0;
+	if (!m_pChild->m_pMesh) return 0;
+	XMFLOAT3 xmf3PickRayOrigin, xmf3PickRayDirection;
+	GenerateRayForPicking(xmf3PickPosition, xmf4x4View, &xmf3PickRayOrigin, &xmf3PickRayDirection);
+	nIntersected = m_pChild -> m_pMesh->CheckRayIntersection(xmf3PickRayOrigin, xmf3PickRayDirection, pfNearHitDistance);
+
+	return(nIntersected);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+
+void CButtonCubeObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	
+	m_TimeAccumulate += fTimeElapsed;
+	
+	float fNewHeight = m_fBaseHeight + m_fAmplitude * sinf(m_fVerticalSpeed * m_TimeAccumulate);
+
+	XMFLOAT3 xmf3Position = GetPosition();
+
+	SetPosition(XMFLOAT3(xmf3Position.x, fNewHeight, xmf3Position.z));
+	CRotatingObject::Animate(fTimeElapsed, pxmf4x4Parent);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -474,6 +474,9 @@ CCubeMesh::CCubeMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCo
 	m_d3dNormalBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
 	m_d3dNormalBufferView.StrideInBytes = m_nStride;
 	m_d3dNormalBufferView.SizeInBytes = m_nStride * m_nVertices;
+
+	bbox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(fx, fy, fz), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+
 }
 
 CCubeMesh::~CCubeMesh()

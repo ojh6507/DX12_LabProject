@@ -7,6 +7,7 @@
 
 CScene::CScene()
 {
+	type = MainMenu;
 }
 
 CScene::~CScene()
@@ -66,76 +67,140 @@ void CScene::BuildDefaultLightsAndMaterials()
 	m_pLights[3].m_fTheta = (float)cos(XMConvertToRadians(30.0f));
 }
 
-void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
+void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
 	CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	CPlayer::PrepareExplosion(pd3dDevice, pd3dCommandList);
 
-	m_nGameObjects = 100;
-	m_ppGameObjects.resize(m_nGameObjects);
-	CGameObject *pApacheModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/orb.bin");
-	
 	std::default_random_engine generator; // 랜덤 숫자 생성기
-	std::uniform_real_distribution<float> distribution(1500.f, 2000.f);
+	std::uniform_real_distribution<float> distribution(990.f, 2000.f);
 	std::uniform_real_distribution<float> speed(60, 70.f);
 	std::uniform_real_distribution<float> yDistribution(100, 200.f);
-	CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice,pd3dCommandList, 2.f, 2.f,2.f);
+	{
+		m_nMainSceneObjects = 10;
+		m_ppMainSceneObjects.reserve(m_nMainSceneObjects);
+		CGameObject** alphabet = new CGameObject * [5];
+		alphabet[0] = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/s.bin");
+		alphabet[1] = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/t.bin");
+		alphabet[2] = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/a.bin");
+		alphabet[3] = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/r.bin");
+		alphabet[4] = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/t.bin");
 
-	for (int x = 0; x < m_nGameObjects - 1; x++) {
-		CEnemyObject* pEnemyObject{};
-		pEnemyObject = new CEnemyObject();
-		pEnemyObject->SetChild(pApacheModel, true);
-		pEnemyObject->InitBullets(bulletMesh, 30);
-		pEnemyObject->InitExplosionParticle();
-		pEnemyObject->OnInitialize();
-		XMFLOAT3 randomPosition;
-		randomPosition.x = distribution(generator);
-		randomPosition.y = yDistribution(generator);
-		randomPosition.z = distribution(generator);
 
-		pEnemyObject->SetPosition(randomPosition);
-		pEnemyObject->SetScale(1.5f, 1.5f, 1.5f);
-		
-		pEnemyObject->m_fMovingSpeed = speed(generator);
-		m_ppGameObjects[x] = pEnemyObject;
+		for (int i = 0; i < 5; i++) {
+			CAlphabetObject* pRotatingObject = new CAlphabetObject();
+			pRotatingObject->SetChild(alphabet[i], true);
+			pRotatingObject->OnInitialize();
+			pRotatingObject->SetPosition(XMFLOAT3((i - 2.4f) * 70.f, 0, 200));
+			pRotatingObject->SetRotationSpeed((i + 2) * 20.f);
+			pRotatingObject->SetScale(2.f, 2.f, 2.f);
+			pRotatingObject->m_fVerticalSpeed = (i + 0.7f);
+
+			pRotatingObject->SetRotationAxis(XMFLOAT3(0, 1, 0));
+
+			char name = 'a' + i;
+			if (i == 1 || i == 4) name = 't';
+			else if (i == 0) name = 's';
+			else if (i == 3) name = 'r';
+
+			pRotatingObject->m_name = name;
+			m_ppMainSceneObjects.push_back(pRotatingObject);
+		}
+		CCubeMesh* boxMesh = new CCubeMesh(pd3dDevice, pd3dCommandList, 30.f, 10.f, 30.f);
+		for (int i = 0; i < 5; i++) {
+			{
+				CButtonCubeObject* pRotatingObject = new CButtonCubeObject();
+				pRotatingObject->SetMesh(boxMesh);
+				pRotatingObject->SetShader(CMaterial::m_pIlluminatedShader);
+				pRotatingObject->OnInitialize();
+				pRotatingObject->SetRotationSpeed(180.f);
+				pRotatingObject->SetPosition(XMFLOAT3((i - 2.4f) * 70.f, 60, 200));
+				pRotatingObject->m_fVerticalSpeed = (i + .7f);
+				pRotatingObject->m_fBaseHeight = (-15.f);
+				m_ppMainSceneObjects.push_back(pRotatingObject);
+			}
+			{
+				CButtonCubeObject* pRotatingObject = new CButtonCubeObject();
+				pRotatingObject->SetMesh(boxMesh);
+				pRotatingObject->SetShader(CMaterial::m_pIlluminatedShader);
+				pRotatingObject->OnInitialize();
+				pRotatingObject->SetRotationSpeed(-180.f);
+				pRotatingObject->SetPosition(XMFLOAT3((i - 2.4f) * 70.f, 60, 200));
+				pRotatingObject->m_fVerticalSpeed = (i + .7f);
+				pRotatingObject->m_fBaseHeight = (40.f);
+				m_ppMainSceneObjects.push_back(pRotatingObject);
+			}
+		}
+
 	}
 
-	CGameObject *pUFOModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, 
-									m_pd3dGraphicsRootSignature, "Model/UFO.bin");
-	m_nBossIndex = m_nGameObjects - 1;
-	CBossObject* pEnemyObject{};
-	pEnemyObject = new CBossObject();
-	pEnemyObject->SetChild(pUFOModel, true);
-	pEnemyObject->InitBullets(bulletMesh, 30);
-	pEnemyObject->InitExplosionParticle();
-	pEnemyObject->SetScale(2.5f, 2.5f, 2.5f);
-	pEnemyObject->OnInitialize();
-	
-	XMFLOAT3 randomPosition;
-	randomPosition.x = distribution(generator);
-	randomPosition.y = yDistribution(generator);
-	randomPosition.z = distribution(generator);
+	{
+		m_nGameObjects = 35;
+		m_ppGameObjects.reserve(m_nGameObjects);
+		CGameObject* pApacheModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/orb.bin");
+		CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice, pd3dCommandList, 2.f, 2.f, 2.f);
 
-	pEnemyObject->SetPosition(randomPosition);
-	pEnemyObject->Rotate(0.0f, 90.0f, 0.0f);
-	pEnemyObject->m_fMovingSpeed = speed(generator);
-	m_ppGameObjects[m_nBossIndex] = pEnemyObject;
-	
-		
-		
-		
+		for (int x = 0; x < m_nGameObjects; x++) {
+			CEnemyObject* pEnemyObject{};
+			pEnemyObject = new CEnemyObject();
+			pEnemyObject->SetChild(pApacheModel, true);
+			pEnemyObject->InitBullets(bulletMesh, 30);
+			pEnemyObject->InitExplosionParticle();
+			pEnemyObject->OnInitialize();
+
+			XMFLOAT3 randomPosition;
+			randomPosition.x = distribution(generator);
+			randomPosition.y = yDistribution(generator);
+			randomPosition.z = distribution(generator);
+
+			pEnemyObject->SetPosition(randomPosition);
+			pEnemyObject->SetScale(1.5f, 1.5f, 1.5f);
+
+			pEnemyObject->m_fMovingSpeed = speed(generator);
+			m_ppGameObjects.push_back(pEnemyObject);
+		}
+
+		CGameObject* pUFOModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList,
+			m_pd3dGraphicsRootSignature, "Model/UFO.bin");
+
+		for (int x = 0; x < 10; x++) {
+			CBossObject* pEnemyObject{};
+			pEnemyObject = new CBossObject();
+			pEnemyObject->SetChild(pUFOModel, true);
+			pEnemyObject->InitBullets(bulletMesh, 30);
+			pEnemyObject->InitExplosionParticle();
+			pEnemyObject->SetScale(2.5f, 2.5f, 2.5f);
+			pEnemyObject->OnInitialize();
+
+			XMFLOAT3 randomPosition;
+			randomPosition.x = distribution(generator) + (x + 1)*100;
+			randomPosition.y = yDistribution(generator);
+			randomPosition.z = distribution(generator) + (x + 1) * 100;
+
+			pEnemyObject->SetPosition(randomPosition);
+			pEnemyObject->Rotate(0.0f, 90.0f, 0.0f);
+			pEnemyObject->m_fMovingSpeed = speed(generator);
+			m_ppBossObjects.push_back(pEnemyObject);
+		}
+	}
 	BuildDefaultLightsAndMaterials();
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+
 }
 
 void CScene::SetEnemyTarget()
 {
-	for (int i = 0; i < m_nGameObjects; i++) {
+	for (int i = 0; i < m_ppGameObjects.size(); i++) {
 		((CEnemyObject*)m_ppGameObjects[i])->SetTarget(m_pPlayer);
 		((CEnemyObject*)m_ppGameObjects[i])->SetTerrain(m_pTerrain);
 		((CEnemyObject*)m_ppGameObjects[i])->m_xmf3TerrainScale = m_xmf3TerrainScale;
+	}
+	for (int i = 0; i < m_ppBossObjects.size(); i++) {
+		((CBossObject*)m_ppBossObjects[i])->SetTarget(m_pPlayer);
+		((CBossObject*)m_ppBossObjects[i])->SetTerrain(m_pTerrain);
+		((CBossObject*)m_ppBossObjects[i])->m_xmf3TerrainScale = m_xmf3TerrainScale;
 	}
 }
 
@@ -144,6 +209,7 @@ void CScene::ReleaseObjects()
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
 
 	for ( auto& object :m_ppGameObjects) if (object) object->Release();
+	for ( auto& object :m_ppMainSceneObjects) if (object) object->Release();
 
 
 	ReleaseShaderVariables();
@@ -218,16 +284,16 @@ void CScene::ReleaseShaderVariables()
 
 void CScene::ReleaseUploadBuffers()
 {
-	for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
+	for (int i = 0; i < m_ppGameObjects.size(); i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
+	for (int i = 0; i < m_ppMainSceneObjects.size(); i++) m_ppMainSceneObjects[i]->ReleaseUploadBuffers();
 }
 
 void CScene::CheckObjectByBulletCollisions()
 {
 	std::vector<CBulletObject*> ppBullets = m_pPlayer->m_ppBullets;
-	for (auto& object : m_ppGameObjects) {
-		
+	for (int i = 0; i < m_ppGameObjects.size(); i++) {
+		CGameObject* object = m_ppGameObjects[i];
 		if (object->m_bBlowingUp) continue;
-
 		std::vector<CBulletObject*> ppBullets2 = ((CEnemyObject*)object)->m_ppBullets;
 		for (int j = 0; j < ppBullets2.size(); j++) {
 			
@@ -239,31 +305,30 @@ void CScene::CheckObjectByBulletCollisions()
 					ppBullets2[j]->Reset();
 					continue;
 				}
-
-				m_pPlayer->GetDamage();
-				//ppBullets2[j]->Reset();
-				//if (!pExplosiveObject->m_bBarrier)
-			}
-
-
-		}
-
-		for (int j = 0; j < ppBullets.size(); j++) {
-			//object->Update();
-			ppBullets2[j]->IsVisible(m_pCamera);
-			if (ppBullets[j]->m_bActive &&
-				object->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB)) {
-				CEnemyObject* pExplosiveObject = (CEnemyObject*)object;
-				//pExplosiveObject->m_bBlowingUp = true;
-				//ppBullets[j]->Reset();
+				m_pPlayer->m_bBlowingUp =true;
 			}
 		}
 	}
 }
 
-void CScene::PickObjectPointedByCursor(float xClient, float yClient, CCamera* pCamera)
+void CScene::CheckGameEnd()
 {
-	if (!pCamera) return;
+	int count{};
+	for (auto& obj : m_ppBossObjects) {
+		if (obj->m_bBlowingUp) {
+			count++;
+		}
+		else
+			break;
+	}
+	if (count == m_ppBossObjects.size()) {
+		::PostQuitMessage(0);
+	}
+}
+
+bool CScene::PickObjectPointedByCursor(float xClient, float yClient, CCamera* pCamera)
+{
+	if (!pCamera) return false;
 	XMFLOAT4X4 xmf4x4View = pCamera->GetViewMatrix();
 	XMFLOAT4X4 xmf4x4Projection = pCamera->GetProjectionMatrix();
 	D3D12_VIEWPORT d3dViewport = pCamera->GetViewport();
@@ -277,20 +342,63 @@ void CScene::PickObjectPointedByCursor(float xClient, float yClient, CCamera* pC
 	float fHitDistance = FLT_MAX, fNearestHitDistance = FLT_MAX;
 	CGameObject* pNearestObject = NULL;
 	//셰이더의 모든 게임 객체들에 대한 마우스 픽킹을 수행하여 카메라와 가장 가까운 게임 객체를 구한다. 
-	for (auto& obj:m_ppGameObjects)
-	{
-		nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
-		if ((nIntersected > 0) && (fHitDistance < fNearestHitDistance))
-		{
-			fNearestHitDistance = fHitDistance;
-			pNearestObject = obj;
+	if (type == InGame) {
+		for (auto& obj : m_ppGameObjects) {
+			if (!obj->IsVisible(m_pCamera)) continue;
+			nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
+			if ((nIntersected > 0) && (fHitDistance < fNearestHitDistance)) {
+				fNearestHitDistance = fHitDistance;
+				pNearestObject = obj;
+			}
+		}
+
+		for (auto& obj : m_ppBossObjects) {
+			if (!obj->IsVisible(m_pCamera)) continue;
+			nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
+			if ((nIntersected > 0) && (fHitDistance < fNearestHitDistance)) {
+				fNearestHitDistance = fHitDistance;
+				pNearestObject = obj;
+				pNearestObject->m_bBlowingUp = true;
+			}
+		}
+
+		if (pNearestObject) {
+			float delayTime = pNearestObject->ActivateBlowsUp();
+			m_pPlayer->SetBulletResetTimer(delayTime);
+			return true;
 		}
 	}
-	if (pNearestObject) {
-		float delayTime = pNearestObject->ActivateBlowsUp();
-		m_pPlayer->SetBulletResetTimer(delayTime);
+
+	else {
+		char buffer[256];
+		XMFLOAT3 yaw = m_pCamera->GetRightVector();
+		sprintf_s(buffer, sizeof(buffer), "right vec:  %.2f, %.2f, %.2f\n", yaw.x, yaw.y, yaw.z);
+		OutputDebugStringA(buffer);
+
+		// Roll 값을 가져와서 문자열로 변환
+		XMFLOAT3 roll = m_pCamera->GetUpVector();
+		sprintf_s(buffer, sizeof(buffer), "up vec:  %.2f, %.2f, %.2f\n", roll.x, roll.y, roll.z);
+		OutputDebugStringA(buffer);
+
+		// UpVector 값을 가져와서 문자열로 변환
+		DirectX::XMFLOAT3 upVector = m_pCamera->GetUpVector();
+		sprintf_s(buffer, sizeof(buffer), "UpVector: (%.2f, %.2f, %.2f)\n", upVector.x, upVector.y, upVector.z);
+		OutputDebugStringA(buffer);
+		for (auto& obj : m_ppMainSceneObjects) {
+			if (!obj->IsVisible(m_pCamera)) continue;
+			nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
+			if ((nIntersected > 0) && (fHitDistance < fNearestHitDistance)) {
+				fNearestHitDistance = fHitDistance;
+				pNearestObject = obj;
+			}
+		}
+		if (pNearestObject) {
+			return true;
+		}
+
 	}
 
+	return false;
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -307,7 +415,8 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 		switch (wParam)
 		{
 		case VK_CONTROL:
-			m_pPlayer->Fire();
+			if(!m_pPlayer->m_bBlowingUp)
+				m_pPlayer->Fire();
 			break;
 		default:
 			break;
@@ -327,20 +436,27 @@ bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 void CScene::AnimateObjects(float fTimeElapsed)
 {
 	m_fElapsedTime = fTimeElapsed;
-	if (m_pLights) {
-		auto p = m_pPlayer->GetPosition();
-		p.y += 30.f;
-		m_pLights[1].m_xmf3Position = p;
-		m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
+	if (type == InGame) {
+		if (m_pLights) {
+			auto p = m_pPlayer->GetPosition();
+			p.y += 30.f;
+			m_pLights[1].m_xmf3Position = p;
+			m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
+		}
+		for (auto& obj : m_ppGameObjects) {
+			obj->Animate(m_fElapsedTime, NULL);
+			obj->UpdateTransform(NULL);
+		}
+		for (auto& obj : m_ppBossObjects) {
+			obj->Animate(m_fElapsedTime, NULL);
+			obj->UpdateTransform(NULL);
+		}
 	}
-	for (int i = 0; i < m_nGameObjects; i++) {
-		m_ppGameObjects[i]->Animate(m_fElapsedTime, NULL);
-		m_ppGameObjects[i]->UpdateTransform(NULL);
-	} 
-	std::vector<CBulletObject*> m_ppBullets = m_pPlayer->m_ppBullets;
-	for (auto& obj : m_ppBullets) {
-		if (obj->m_bActive)
-			obj->Animate(fTimeElapsed);
+	else {
+		for (auto& obj : m_ppMainSceneObjects) {
+			obj->Animate(m_fElapsedTime, NULL);
+			obj->UpdateTransform(NULL);
+		}
 	}
 
 }
@@ -356,14 +472,36 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
 
 	D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
 	pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
+	if (type == InGame) {
+		if(m_pTerrain)
+			m_pTerrain->Render(pd3dCommandList, pCamera);
+		if (m_pCrosshair) 
+			m_pCrosshair->Render(pd3dCommandList, m_pCamera);
 
-	for (int i = 0; i < m_nGameObjects; i++) {
-		if (m_ppGameObjects[i]) {
-			m_ppGameObjects[i]->Update();
-			if (m_ppGameObjects[i]->IsVisible(pCamera))
-				m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+		for (int i = 0; i < m_nGameObjects; i++) {
+			if (m_ppGameObjects[i]) {
+				if (m_ppGameObjects[i]->IsVisible(pCamera))
+					m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+			}
+		}
+		for (auto& obj : m_ppBossObjects) {
+			if (obj) {
+				if (obj->IsVisible(pCamera)) {
+					obj->Render(pd3dCommandList, pCamera);
+				}
+			}
+		}
+		CheckObjectByBulletCollisions();
+		CheckGameEnd();
+	}
+	else {
+		for (int i = 0; i < m_ppMainSceneObjects.size(); i++) {
+			if (m_ppMainSceneObjects[i]) {
+				m_ppMainSceneObjects[i]->Update();
+				if (m_ppMainSceneObjects[i]->IsVisible(pCamera)) {}
+					m_ppMainSceneObjects[i]->Render(pd3dCommandList, pCamera);
+			}
 		}
 	}
-	CheckObjectByBulletCollisions();
 }
 

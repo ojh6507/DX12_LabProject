@@ -55,6 +55,14 @@ void CPlayer::GetDamage()
 		m_bBlowingUp = true;
 }
 
+void CPlayer::ResetOrientationVectors()
+{
+	m_xmf3Right = XMFLOAT3(1, 0, 0);
+	m_xmf3Look = XMFLOAT3(0, 0, 1);
+	m_xmf3Up = XMFLOAT3(0, 1, 0);
+	OnPrepareRender();
+}
+
 void CPlayer::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
 {
 	if (m_pCamera) m_pCamera->CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -288,7 +296,8 @@ void CPlayer::Fire()
 }
 void CPlayer::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
 {
-	CGameObject::Render(pd3dCommandList, pCamera);
+	if(!m_bGameEnd)
+		CGameObject::Render(pd3dCommandList, pCamera);
 }
 void CPlayer::UpdateRecoil(float deltaTime)
 {
@@ -314,7 +323,7 @@ void CPlayer::UpdateRecoil(float deltaTime)
 
 }
 
-void CPlayer::InitBullets(CMesh* pbullet, float speed)
+void CPlayer::InitBullets(CMesh* pbullet, float speed, float lifetime)
 {
 	for (int i = 0; i < BULLETS; i++) {
 		CBulletObject* bullet = new CBulletObject();
@@ -322,6 +331,7 @@ void CPlayer::InitBullets(CMesh* pbullet, float speed)
 		bullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
 		bullet->SetRotationSpeed(300.0f);
 		bullet->m_fMovingSpeed = speed;
+		bullet->m_fLockingTime = lifetime;
 		bullet->SetActive(false);
 		bullet->SetShader(CMaterial::m_pIlluminatedShader);
 		m_ppBullets.push_back(bullet);
@@ -364,7 +374,7 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 	SetChild(pGameObject, true);
 	CCubeMesh* bulletMesh = new CCubeMesh(pd3dDevice, pd3dCommandList, 8.f, 8.f, 8.f);
 	OnInitialize();
-	InitBullets(bulletMesh,100.f);
+	InitBullets(bulletMesh,600.f, 0.15f);
 	InitExplosionParticle();
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -381,6 +391,7 @@ void CAirplanePlayer::OnInitialize()
 
 	gunObj = FindFrame("gun");
 	HandObject = FindFrame("GunWith_Mesh_FireIdleMesh1");
+	UpdateBoundingBox(HandObject->m_pMesh);
 }
 
 void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
@@ -416,7 +427,6 @@ void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 	
 	}
 	else {
-		UpdateBoundingBox(HandObject->m_pMesh);
 		UpdateRecoil(fTimeElapsed);
 		CPlayer::Animate(fTimeElapsed, pxmf4x4Parent);
 		for (auto& obj : m_ppBullets) {
@@ -546,6 +556,7 @@ CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 void CEnemyObject::OnInitialize()
 {
 	m_BodyObject =FindFrame("orb");
+	UpdateBoundingBox(m_BodyObject->m_pMesh);
 }
 
 void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
@@ -557,9 +568,6 @@ void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 			m_bBlowingUp = true;
 		}
 	}
-
-	if(m_BodyObject)
-		CGameObject::UpdateBoundingBox(m_BodyObject->m_pMesh);
 	if (m_bBlowingUp) {
 		m_fElapsedBlowupTimes = 0;
 		m_bBlowingUpAvailable = false;
@@ -588,126 +596,8 @@ void CEnemyObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 		}
 	}
 	else {
-		const float targetFrameTime = 1.0f / 60.0f; // 60 FPS 기준 프레임 시간
-		const float interpolationFactor = 0.1f; // 보간 계수
-		const float fieldOfView = 180.f;
-		const float followDistance = 120.f;
-		const float targetAvoidanceRadius = 40.f;
-		const float avoidanceRadius = 2.f;
-		const float separationFactor = 1.4f; // 회피 벡터의 가중치
-		const float deadZone = 20.0f;
-
-		// 타겟 방향 및 거리 계산
-		XMFLOAT3 targetDirection = Vector3::Subtract(m_target->GetPosition(), GetPosition());
-		float targetDistance = Vector3::Length(targetDirection);
-		targetDirection = Vector3::Normalize(targetDirection);
-
-		// 타겟 회피 벡터 계산
-		XMFLOAT3 targetAvoidanceVector = XMFLOAT3(0, 0, 0);
-		if (targetDistance < targetAvoidanceRadius) {
-			targetAvoidanceVector = Vector3::Normalize(Vector3::Subtract(GetPosition(), m_target->GetPosition()));
-			targetAvoidanceVector = Vector3::ScalarProduct(targetAvoidanceVector, 1 / targetDistance);
-		}
-
-		XMFLOAT3 finalDirection = Vector3::Add(targetDirection, Vector3::ScalarProduct(targetAvoidanceVector, separationFactor));
-		finalDirection = Vector3::Normalize(finalDirection);
-
-		// 현재 방향을 쿼터니언으로 변환
-		XMVECTOR currentLook = XMLoadFloat3(&m_xmf3Look);
-		XMVECTOR currentQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), currentLook, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
-
-		// 목표 방향을 쿼터니언으로 변환
-		XMVECTOR targetQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&finalDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
-
-		// SLERP를 사용하여 현재 방향과 목표 방향 사이를 보간
-		XMVECTOR newQuat = XMQuaternionSlerp(currentQuat, targetQuat, interpolationFactor);
-
-		// 보간된 쿼터니언을 행렬로 변환하여 방향 설정
-		XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(newQuat);
-		XMFLOAT3 newLook;
-		XMStoreFloat3(&newLook, XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotationMatrix));
-
-		// 이동 및 회전 로직 적용
-		if (targetDistance < followDistance - deadZone) {
-			LookAt(m_target->GetPosition(), newLook); // LookAt 함수가 내부적으로 월드 변환 행렬을 업데이트함
-		}
-		else if (targetDistance < followDistance + deadZone) {
-			float speedFactor = (targetDistance - (followDistance - deadZone)) / (deadZone + 1);
-			float adjustedSpeed = m_fMovingSpeed * speedFactor * targetFrameTime;
-
-			XMFLOAT3 shift = Vector3::ScalarProduct(finalDirection, adjustedSpeed);
-
-			LookAt(m_target->GetPosition(), newLook);
-
-			XMFLOAT3 predictedPosition = Vector3::Add(GetPosition(), shift); // 예상 위치 계산
-			float predictedTerrainHeight = m_pTerrain->GetHeight(predictedPosition.x / m_xmf3TerrainScale.x, 
-				predictedPosition.z / m_xmf3TerrainScale.z) + 30.f; // 예상 위치의 지형 높이 계산
-
-			// 지형 높이에 따라 shift 조정
-			if (predictedPosition.y < predictedTerrainHeight) {
-				shift.y = predictedTerrainHeight - GetPosition().y; // y 축 이동량 조정
-			}
-			else if(predictedPosition.y > 200.f) {
-				shift.y = 200.f - GetPosition().y; // y 축 이동량 조정
-			}
-
-			Move(shift, false);
-		}
-		else {
-			// Random patrol logic
-			m_TimeSinceLastDirectionChange += fTimeElapsed;
-
-			if (m_TimeSinceLastDirectionChange >= m_ChangeDirectionInterval) {
-				m_RandomDirection = XMFLOAT3(rand() / float(RAND_MAX) * 2.0f - 1.0f,
-					rand() / float(RAND_MAX) * 2.0f - 1.0f,
-					rand() / float(RAND_MAX) * 2.0f - 1.0f);
-				m_RandomDirection = Vector3::Normalize(m_RandomDirection);
-				m_TimeSinceLastDirectionChange = 0.0f;
-			}
-			XMFLOAT3 shift = XMFLOAT3(m_RandomDirection.x * m_fMovingSpeed * targetFrameTime,
-				m_RandomDirection.y * m_fMovingSpeed * targetFrameTime,
-				m_RandomDirection.z * m_fMovingSpeed * targetFrameTime);
-			
-			XMFLOAT3 newpos = XMFLOAT3(m_xmf4x4World._41 + shift.x,
-				m_xmf4x4World._42 + shift.y,
-				m_xmf4x4World._43 + shift.z);
-
-			if (!XMVector3Equal(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&newpos))) {
-				LookAt(newpos, newLook); // LookAt 함수가 내부적으로 월드 변환 행렬을 업데이트함
-			}
-			m_xmf3Look = m_RandomDirection;
-
-			XMFLOAT3 predictedPosition = Vector3::Add(GetPosition(), shift); // 예상 위치 계산
-			float predictedTerrainHeight = m_pTerrain->GetHeight(predictedPosition.x / m_xmf3TerrainScale.x, 
-				predictedPosition.z / m_xmf3TerrainScale.z) + 30.f; // 예상 위치의 지형 높이 계산
-
-			// 지형 높이에 따라 shift 조정
-			if (predictedPosition.y < predictedTerrainHeight) {
-				shift.y = predictedTerrainHeight - GetPosition().y; // y 축 이동량 조정
-			}
-			else if (predictedPosition.y > 200.f) {
-				shift.y = 200.f - GetPosition().y;
-			}
-
-			Move(shift, false);
-			//MoveForward();
-		}
-		// 회전 각도 계산 및 디버깅 출력
-		XMFLOAT3 actorDirection = Vector3::Normalize(GetLook());
-		float angle = acos(Vector3::DotProduct(actorDirection, finalDirection));
-		float angleDegrees = angle * (180.0f / XM_PI);
-
-
-		// 총알 발사 로직
-		m_fTimeSinceLastBarrage += fTimeElapsed;
-		if (targetDistance < 300.f && angleDegrees <= 160.f && m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
-			Fire();
-			m_fTimeSinceLastBarrage = 0;
-		}
-		
+		EnemyMovement(fTimeElapsed);
 	}
-
-
 	for (auto& obj: m_ppBullets) {
 		if (obj->m_bActive) obj->Animate(fTimeElapsed);
 	}
@@ -719,7 +609,7 @@ float CEnemyObject::ActivateBlowsUp()
 	m_bBlowingUpAvailable = true;
 	auto sub_v = Vector3::Subtract(m_target->GetPosition(), GetPosition());
 	float distance = sqrt(Vector3::Length(sub_v));
-	m_fDelay = distance / 100.f;
+	m_fDelay = distance / 90.f;
 	return m_fDelay;
 }
 
@@ -742,8 +632,6 @@ void CEnemyObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* p
 
 void CEnemyObject::Update()
 {
-	if(m_BodyObject)
-		CGameObject::UpdateBoundingBox(m_BodyObject->m_pMesh);
 }
 
 int CEnemyObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View, float* pfNearHitDistance)
@@ -758,6 +646,124 @@ int CEnemyObject::PickObjectByRayIntersection(XMFLOAT3& xmf3PickPosition, XMFLOA
 	return(nIntersected);
 }
 
+void CEnemyObject::EnemyMovement(float fTimeElapsed)
+{
+	const float targetFrameTime = 1.0f / 60.0f; // 60 FPS 기준 프레임 시간
+	const float interpolationFactor = 0.1f; // 보간 계수
+	const float fieldOfView = 180.f;
+	const float followDistance = 160.f;
+	const float targetAvoidanceRadius = 40.f;
+	const float avoidanceRadius = 2.f;
+	const float separationFactor = 1.4f; // 회피 벡터의 가중치
+	const float deadZone = 20.0f;
+
+	// 타겟 방향 및 거리 계산
+	XMFLOAT3 targetDirection = Vector3::Subtract(m_target->GetPosition(), GetPosition());
+	float targetDistance = Vector3::Length(targetDirection);
+	targetDirection = Vector3::Normalize(targetDirection);
+
+	// 타겟 회피 벡터 계산
+	XMFLOAT3 targetAvoidanceVector = XMFLOAT3(0, 0, 0);
+	if (targetDistance < targetAvoidanceRadius) {
+		targetAvoidanceVector = Vector3::Normalize(Vector3::Subtract(GetPosition(), m_target->GetPosition()));
+		targetAvoidanceVector = Vector3::ScalarProduct(targetAvoidanceVector, 1 / targetDistance);
+	}
+
+	XMFLOAT3 finalDirection = Vector3::Add(targetDirection, Vector3::ScalarProduct(targetAvoidanceVector, separationFactor));
+	finalDirection = Vector3::Normalize(finalDirection);
+
+	// 현재 방향을 쿼터니언으로 변환
+	XMVECTOR currentLook = XMLoadFloat3(&m_xmf3Look);
+	XMVECTOR currentQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), currentLook, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+
+	// 목표 방향을 쿼터니언으로 변환
+	XMVECTOR targetQuat = XMQuaternionRotationMatrix(XMMatrixLookToLH(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&finalDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+
+	// SLERP를 사용하여 현재 방향과 목표 방향 사이를 보간
+	XMVECTOR newQuat = XMQuaternionSlerp(currentQuat, targetQuat, interpolationFactor);
+
+	// 보간된 쿼터니언을 행렬로 변환하여 방향 설정
+	XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(newQuat);
+	XMFLOAT3 newLook;
+	XMStoreFloat3(&newLook, XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotationMatrix));
+
+	// 이동 및 회전 로직 적용
+	if ((!m_target->m_bBlowingUp) && targetDistance < followDistance + deadZone) {
+		float speedFactor = (targetDistance - (followDistance - deadZone)) / (deadZone + 1);
+		float adjustedSpeed = m_fMovingSpeed * speedFactor * targetFrameTime;
+
+		XMFLOAT3 shift = Vector3::ScalarProduct(finalDirection, adjustedSpeed);
+
+		LookAt(m_target->GetPosition(), newLook);
+
+		XMFLOAT3 predictedPosition = Vector3::Add(GetPosition(), shift); // 예상 위치 계산
+		float predictedTerrainHeight = m_pTerrain->GetHeight(predictedPosition.x / m_xmf3TerrainScale.x,
+			predictedPosition.z / m_xmf3TerrainScale.z) + 30.f; // 예상 위치의 지형 높이 계산
+
+		// 지형 높이에 따라 shift 조정
+		if (predictedPosition.y < (predictedTerrainHeight + m_heightMapOffset)) {
+			shift.y = predictedTerrainHeight - GetPosition().y + m_heightMapOffset; // y 축 이동량 조정
+		}
+		else if (predictedPosition.y > m_heightOffset) {
+			shift.y = m_heightOffset - GetPosition().y; // y 축 이동량 조정
+		}
+
+		Move(shift, false);
+		// 회전 각도 계산 및 디버깅 출력
+		XMFLOAT3 actorDirection = Vector3::Normalize(GetLook());
+		float angle = acos(Vector3::DotProduct(actorDirection, finalDirection));
+		float angleDegrees = angle * (180.0f / XM_PI);
+
+
+		// 총알 발사 로직
+		m_fTimeSinceLastBarrage += fTimeElapsed;
+		if ((!m_target->m_bBlowingUp) && targetDistance < 300.f && angleDegrees <= 160.f && m_fTimeSinceLastBarrage >= m_fBulletFireDelay) {
+			Fire();
+			m_fTimeSinceLastBarrage = 0;
+		}
+	}
+	else {
+		// Random patrol logic
+		m_TimeSinceLastDirectionChange += fTimeElapsed;
+
+		if (m_TimeSinceLastDirectionChange >= m_ChangeDirectionInterval) {
+			m_RandomDirection = XMFLOAT3(rand() / float(RAND_MAX) * 2.0f - 1.0f,
+				rand() / float(RAND_MAX) * 2.0f - 1.0f,
+				rand() / float(RAND_MAX) * 2.0f - 1.0f);
+			m_RandomDirection = Vector3::Normalize(m_RandomDirection);
+			m_TimeSinceLastDirectionChange = 0.0f;
+		}
+		XMFLOAT3 shift = XMFLOAT3(m_RandomDirection.x * m_fMovingSpeed * targetFrameTime,
+			m_RandomDirection.y * m_fMovingSpeed * targetFrameTime,
+			m_RandomDirection.z * m_fMovingSpeed * targetFrameTime);
+
+		XMFLOAT3 newpos = XMFLOAT3(m_xmf4x4World._41 + shift.x,
+			m_xmf4x4World._42 + shift.y,
+			m_xmf4x4World._43 + shift.z);
+
+		if (!XMVector3Equal(XMLoadFloat3(&m_xmf3Position), XMLoadFloat3(&newpos))) {
+			LookAt(newpos, newLook);
+		}
+		m_xmf3Look = m_RandomDirection;
+
+		XMFLOAT3 predictedPosition = Vector3::Add(GetPosition(), shift); // 예상 위치 계산
+		float predictedTerrainHeight = m_pTerrain->GetHeight(predictedPosition.x / m_xmf3TerrainScale.x,
+			predictedPosition.z / m_xmf3TerrainScale.z) + 30.f; // 예상 위치의 지형 높이 계산
+
+		// 지형 높이에 따라 shift 조정
+		if (predictedPosition.y < predictedTerrainHeight) {
+			shift.y = predictedTerrainHeight - GetPosition().y; // y 축 이동량 조정
+		}
+		else if (predictedPosition.y > m_heightOffset) {
+			shift.y = m_heightOffset - GetPosition().y;
+		}
+
+		Move(shift, false);
+
+
+	}
+}
+
 
 void CEnemyObject::Fire()
 {
@@ -765,7 +771,71 @@ void CEnemyObject::Fire()
 	CPlayer::Fire();
 }
 
+
 void CBossObject::OnInitialize()
 {
 	m_BodyObject = FindFrame("UFO");
 }
+
+void CBossObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	CPlayer::OnPrepareRender();
+	if (m_bBlowingUpAvailable) {
+		m_fElapsedBlowupTimes += fTimeElapsed;
+		if (m_fElapsedBlowupTimes > m_fDelay) {
+			m_bBlowingUp = true;
+		}
+	}
+	if (m_bBlowingUp) {
+		m_fElapsedBlowupTimes = 0;
+		m_bBlowingUpAvailable = false;
+		m_fElapsedTimes += fTimeElapsed;
+		if (m_fElapsedTimes <= m_fDuration) {
+			XMFLOAT3 xmf3Position = GetPosition();
+			for (int i = 0; i < EXPLOSION_DEBRISES; i++) {
+				m_pxmf4x4Transforms[i] = Matrix4x4::Identity();
+
+				m_pxmf4x4Transforms[i]._41 = xmf3Position.x + m_pxmf3SphereVectors[i].x * m_fExplosionSpeed * m_fElapsedTimes;
+				m_pxmf4x4Transforms[i]._42 = xmf3Position.y + m_pxmf3SphereVectors[i].y * m_fExplosionSpeed * m_fElapsedTimes;
+				m_pxmf4x4Transforms[i]._43 = xmf3Position.z + m_pxmf3SphereVectors[i].z * m_fExplosionSpeed * m_fElapsedTimes;
+
+				XMVECTOR axis = XMLoadFloat3(&m_pxmf3SphereVectors[i]);
+				XMMATRIX rotationMatrix = XMMatrixRotationAxis(axis, m_fExplosionRotation * m_fElapsedTimes);
+
+				XMMATRIX transformMatrix = XMLoadFloat4x4(&m_pxmf4x4Transforms[i]);
+				transformMatrix = XMMatrixMultiply(rotationMatrix, transformMatrix);
+
+				XMStoreFloat4x4(&m_pxmf4x4Transforms[i], transformMatrix);
+			}
+		}
+		else {
+			m_bExplosionParticleRenderEnd = true;
+		}
+	}
+	else {
+		CEnemyObject::EnemyMovement(fTimeElapsed);
+	}
+	for (auto& obj : m_ppBullets) {
+		if (obj->m_bActive) obj->Animate(fTimeElapsed);
+	}
+}
+
+void CBossObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	if (m_bBlowingUp) {
+		if (!m_bExplosionParticleRenderEnd) {
+			for (int i = 0; i < EXPLOSION_DEBRISES; i++) {
+				m_exp[i]->m_xmf4x4World = m_pxmf4x4Transforms[i];
+				m_exp[i]->Render(pd3dCommandList, pCamera);
+			}
+		}
+	}
+	else {
+		CPlayer::Render(pd3dCommandList, pCamera);
+	}
+	for (auto& obj : m_ppBullets) {
+		if (obj->m_bActive)obj->Render(pd3dCommandList, pCamera);
+
+	}
+}
+

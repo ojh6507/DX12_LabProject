@@ -84,8 +84,7 @@ private:
 	XMFLOAT3					m_xmf3TerrainScale;
 	CHeightMapTerrain* m_pTerrain = NULL;
 	CCrosshair					*m_pCrosshair = NULL;
-	HPBar						*m_pHPBar = NULL;
-
+	
 	POINT						m_ptOldCursorPos;
 
 	_TCHAR						m_pszFrameRate[70];

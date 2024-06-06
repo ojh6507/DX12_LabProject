@@ -288,6 +288,10 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 	case WM_LBUTTONDOWN:
 	case WM_RBUTTONDOWN:
 	{
+		if (m_pScene && m_pScene->type == MainMenu) {
+			bool res = m_pScene->PickObjectPointedByCursor(LOWORD(lParam), HIWORD(lParam), m_pCamera);
+			if (res) m_pScene->type = InGame;
+		}
 		::SetCapture(hWnd);
 		::GetCursorPos(&m_ptOldCursorPos);
 	}
@@ -305,6 +309,7 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 
 void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
+	//if (m_pScene && m_pScene->type == MainMenu) return;
 	if (m_pScene) m_pScene->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
@@ -331,6 +336,7 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 
 						if (m_pScene)
 							m_pScene->PickObjectPointedByCursor(centerX, centerY, m_pCamera);
+						
 					}
 				}
 				case VK_F5:
@@ -425,6 +431,7 @@ void CGameFramework::BuildObjects()
 	pAirplanePlayer->SetPosition(XMFLOAT3(1000.0f, 400.0f, 1000.0f));
 	m_pScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
 	m_pScene->m_pCamera = m_pPlayer->GetCamera();
+	m_pScene->m_pCrosshair = m_pCrosshair;
 	m_pCamera = m_pPlayer->GetCamera();
 
 	m_xmf3TerrainScale = XMFLOAT3(512, 1, 512);
@@ -539,8 +546,8 @@ void CGameFramework::MoveToNextFrame()
 void CGameFramework::FrameAdvance()
 {    
 	m_GameTimer.Tick(0.0f);
-	
-	ProcessInput();
+	if(m_pScene && m_pScene->type == InGame)
+		ProcessInput();
 
     AnimateObjects();
 
@@ -560,8 +567,12 @@ void CGameFramework::FrameAdvance()
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	d3dRtvCPUDescriptorHandle.ptr += (m_nSwapChainBufferIndex * m_nRtvDescriptorIncrementSize);
 
-	float pfClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f };
-	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor/*Colors::Azure*/, 0, NULL);
+	float pfClearColor[4] = { 0.0f, 0.125f, 0.24f, 1.0f };
+	float pfClearWiteColor[4] = { 0.2f,0.2f, 0.2f, 1.0f };
+	if(m_pScene->type == MainMenu)
+		m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearWiteColor/*Colors::Azure*/, 0, NULL);
+	else
+		m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor/*Colors::Azure*/, 0, NULL);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
@@ -569,12 +580,10 @@ void CGameFramework::FrameAdvance()
 	m_pd3dCommandList->OMSetRenderTargets(1, &d3dRtvCPUDescriptorHandle, TRUE, &d3dDsvCPUDescriptorHandle);
 
 	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
-	if(m_pTerrain)	m_pTerrain->Render(m_pd3dCommandList, m_pCamera);
-
+	
 #ifdef _WITH_PLAYER_TOP
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 #endif
-	if (m_pCrosshair) m_pCrosshair->Render(m_pd3dCommandList, m_pCamera);
 	if (m_pPlayer) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;

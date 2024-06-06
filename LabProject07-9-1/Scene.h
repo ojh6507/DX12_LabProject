@@ -40,15 +40,17 @@ struct RAY {
 	XMFLOAT3 Origin;
 	XMFLOAT3 Direction;
 };
+enum  SceneType {
+	MainMenu,
+	InGame
+};
 class CScene
 {
 public:
     CScene();
     ~CScene();
-	void GenerateRayForPicking(CGameObject* gameObject, XMFLOAT3& xmf3PickPosition, XMFLOAT4X4& xmf4x4View,
-		XMFLOAT3* pxmf3PickRayOrigin, XMFLOAT3* pxmf3PickRayDirection);
-
-	void PickObjectPointedByCursor(float size_x, float size_y, CCamera* pCamera);
+	bool PickObjectPointedByCursor(float size_x, float size_y, CCamera* pCamera);
+	
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
@@ -70,25 +72,31 @@ public:
 
 	void ReleaseUploadBuffers();
 	void CheckObjectByBulletCollisions();
+	void CheckGameEnd();
 
 	CPlayer						*m_pPlayer = NULL;
 	CCamera* m_pCamera = nullptr;
 public:
-	ID3D12RootSignature			*m_pd3dGraphicsRootSignature = NULL;
+	ID3D12RootSignature			*m_pd3dGraphicsRootSignature = nullptr;
+	SceneType type;
 
 	std::vector<CGameObject*>m_ppGameObjects;
-	int							m_nGameObjects = 0;
-	int							m_nBossIndex = 0;
+	std::vector<CGameObject*>m_ppBossObjects;
+	std::vector<CGameObject*>m_ppMainSceneObjects;
+	int	m_nGameObjects = 0;
+	int	m_nMainSceneObjects = 0;
+	int	m_nBossIndex = 0;
 
-	LIGHT						*m_pLights = NULL;
-	CHeightMapTerrain			* m_pTerrain = NULL;
+	LIGHT*m_pLights = nullptr;
+	CHeightMapTerrain* m_pTerrain = nullptr;
+	CCrosshair*	m_pCrosshair = nullptr;
 	int							m_nLights = 0;
 
-	XMFLOAT4					m_xmf4GlobalAmbient;
-	XMFLOAT3					m_xmf3TerrainScale;
+	XMFLOAT4 m_xmf4GlobalAmbient;
+	XMFLOAT3 m_xmf3TerrainScale;
 
-	ID3D12Resource				*m_pd3dcbLights = NULL;
-	LIGHTS						*m_pcbMappedLights = NULL;
+	ID3D12Resource	*m_pd3dcbLights = nullptr;
+	LIGHTS			*m_pcbMappedLights = nullptr;
 
-	float						m_fElapsedTime = 0.0f;
+	float m_fElapsedTime = 0.0f;
 };
