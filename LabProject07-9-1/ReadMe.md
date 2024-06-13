@@ -9,10 +9,13 @@ Windows 10/11에서 실행되고 마우스와 키보드로 컨트롤한다는 �
 
 ## 실행 화면 
  ### < Start 화면 >
-![alt text](image.png)
+ ![image](https://github.com/ojh6507/DX12_LabProject/assets/45549589/1b43629b-701c-45c1-98f8-f0c82fb94d1d)
+
  ### < 인 게임 화면 >
-![alt text](image-2.png)
-![alt text](image-3.png)
+ ![image-2](https://github.com/ojh6507/DX12_LabProject/assets/45549589/864ad7d2-3bf3-42fe-a7f5-4eea0d7cd62d)
+ 
+ ![image-3](https://github.com/ojh6507/DX12_LabProject/assets/45549589/ea8361a9-1055-4e23-8e1f-63a4126268c3)
+
 ## 구현
 ### Scene 전환
 기존 과제01에서 Scene을 스택으로 관리하고, new와 delete과정으로 씬 전환을 구현했었으나.
