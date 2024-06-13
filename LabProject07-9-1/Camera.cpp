@@ -248,33 +248,26 @@ void CFirstPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 void CFirstPersonCamera::Rotate(float x, float y, float z)
 {
 	
-	if (m_pPlayer && (x != 0.0f))
-	{
+	if (m_pPlayer && (x != 0.0f)) {
 		m_fPitch += x;
 		if (m_fPitch > +20.0f) { x -= (m_fPitch - 20.0f); m_fPitch = +20.0f; }
 		if (m_fPitch < -15.0f) { x -= (m_fPitch + 15.0f); m_fPitch = -15.0f; }
-
 		XMFLOAT3 xmf3Right = m_pPlayer->GetRightVector();
 		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Right), XMConvertToRadians(x));
-		
 		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
 		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-		
+
 		m_xmf3Position = Vector3::Subtract(m_xmf3Position, m_pPlayer->GetPosition());
 		m_xmf3Position = Vector3::TransformCoord(m_xmf3Position, xmmtxRotate);
 		m_xmf3Position = Vector3::Add(m_xmf3Position, m_pPlayer->GetPosition());
 	}
-	if (m_pPlayer && (y != 0.0f))
-	{
+	if (m_pPlayer && (y != 0.0f)) {
 		m_fYaw += y;
 		if (m_fYaw > 360.0f) m_fYaw -= 360.0f;
 		if (m_fYaw < 0.0f) m_fYaw += 360.0f;
-
-
 		XMFLOAT3 xmf3Up = m_pPlayer->GetUpVector();
 		XMFLOAT3 DefalutUp = { 0.0f, 1.0f, 0.0f };
-		
 		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&DefalutUp), XMConvertToRadians(y));
 		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);

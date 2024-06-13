@@ -116,11 +116,11 @@ protected:
 	float m_fExplosionRotation = 720.0f;
 };
 
-class CAirplanePlayer : public CPlayer
+class CFPSPlayer : public CPlayer
 {
 public:
-	CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
-	virtual ~CAirplanePlayer();
+	CFPSPlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
+	virtual ~CFPSPlayer();
 
 	CGameObject* HandObject = NULL;
 	CGameObject*				m_pTailRotorFrame = NULL;

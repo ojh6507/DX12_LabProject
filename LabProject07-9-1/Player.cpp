@@ -359,9 +359,9 @@ void CPlayer::Recoil()
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// CAirplanePlayer
+// CFPSPlayer
 
-CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature)
+CFPSPlayer::CFPSPlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature)
 {
 	m_pCamera = ChangeCamera(FIRST_PERSON_CAMERA, 0.0f);
 
@@ -379,12 +379,12 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
-CAirplanePlayer::~CAirplanePlayer()
+CFPSPlayer::~CFPSPlayer()
 {
 }
 
 
-void CAirplanePlayer::OnInitialize()
+void CFPSPlayer::OnInitialize()
 {
 //	m_pMainRotorFrame = FindFrame("rotor");
 //	m_pTailRotorFrame = FindFrame("black_m_7");
@@ -394,7 +394,7 @@ void CAirplanePlayer::OnInitialize()
 	UpdateBoundingBox(HandObject->m_pMesh);
 }
 
-void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+void CFPSPlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
 	if (m_bBlowingUp) {
 	
@@ -435,7 +435,7 @@ void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 	}
 }
 
-void CAirplanePlayer::OnPrepareRender()
+void CFPSPlayer::OnPrepareRender()
 {
 	if (m_bBlowingUp) {
 		return;
@@ -444,7 +444,7 @@ void CAirplanePlayer::OnPrepareRender()
 }
 
 
-void CAirplanePlayer::Fire()
+void CFPSPlayer::Fire()
 {
 	CBulletObject* pBulletObject = NULL;
 	for (int i = 0; i < m_ppBullets.size(); i++) {
@@ -471,7 +471,7 @@ void CAirplanePlayer::Fire()
 	Recoil();
 }
 
-void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+void CFPSPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	if (m_bBlowingUp) {
 
@@ -492,7 +492,7 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 	}
 }
 
-void CAirplanePlayer::SetBulletResetTimer(float t)
+void CFPSPlayer::SetBulletResetTimer(float t)
 {
 	for (auto& obj : m_ppBullets) {
 		if (obj->m_bActive)obj -> SetTimer(t);
@@ -500,7 +500,7 @@ void CAirplanePlayer::SetBulletResetTimer(float t)
 	}
 }
 
-CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
+CCamera *CFPSPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 {
 	DWORD nCurrentCameraMode = (m_pCamera) ? m_pCamera->GetMode() : 0x00;
 	if (nCurrentCameraMode == nNewCameraMode) return(m_pCamera);

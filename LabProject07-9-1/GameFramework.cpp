@@ -427,7 +427,7 @@ void CGameFramework::BuildObjects()
 	m_pHPBar->SetMesh(m);
 	m_pHPBar->SetShader(CMaterial::m_pHpBarShader);
 */
-	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature());
+	CFPSPlayer *pAirplanePlayer = new CFPSPlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature());
 	pAirplanePlayer->SetPosition(XMFLOAT3(1000.0f, 400.0f, 1000.0f));
 	m_pScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
 	m_pScene->m_pCamera = m_pPlayer->GetCamera();

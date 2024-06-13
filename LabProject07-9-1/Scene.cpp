@@ -369,20 +369,11 @@ bool CScene::PickObjectPointedByCursor(float xClient, float yClient, CCamera* pC
 	}
 
 	else {
-		char buffer[256];
 		XMFLOAT3 yaw = m_pCamera->GetRightVector();
-		sprintf_s(buffer, sizeof(buffer), "right vec:  %.2f, %.2f, %.2f\n", yaw.x, yaw.y, yaw.z);
-		OutputDebugStringA(buffer);
-
-		// Roll 값을 가져와서 문자열로 변환
 		XMFLOAT3 roll = m_pCamera->GetUpVector();
-		sprintf_s(buffer, sizeof(buffer), "up vec:  %.2f, %.2f, %.2f\n", roll.x, roll.y, roll.z);
-		OutputDebugStringA(buffer);
 
-		// UpVector 값을 가져와서 문자열로 변환
 		DirectX::XMFLOAT3 upVector = m_pCamera->GetUpVector();
-		sprintf_s(buffer, sizeof(buffer), "UpVector: (%.2f, %.2f, %.2f)\n", upVector.x, upVector.y, upVector.z);
-		OutputDebugStringA(buffer);
+	
 		for (auto& obj : m_ppMainSceneObjects) {
 			if (!obj->IsVisible(m_pCamera)) continue;
 			nIntersected = obj->PickObjectByRayIntersection(xmf3PickPosition, xmf4x4View, &fHitDistance);
